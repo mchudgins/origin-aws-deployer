@@ -5,9 +5,10 @@ import yaml
 
 def main(argv):
 
-	public_ip = argv[0]
+	yaml_file = argv[0]
+	public_ip = argv[1]
 
-	with open( "openshift.local.config/master/master-config.yaml" ) as f:
+	with open( yaml_file ) as f:
 		list_doc = yaml.load( f )
 
 	list_doc[ 'assetConfig' ][ 'masterPublicURL' ] = 'https://' + public_ip + ':8443/'
@@ -20,7 +21,7 @@ def main(argv):
 
 	list_doc[ 'networkConfig' ][ 'networkPluginName' ] = 'redhat/openshift-ovs-subnet'
 
-	with open( "openshift.local.config/master/master-config.yaml", "w" ) as f:
+	with open( yaml_file, "w" ) as f:
 		yaml.dump(list_doc, f)
 
 if __name__ == "__main__":

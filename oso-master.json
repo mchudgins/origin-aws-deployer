@@ -123,13 +123,14 @@
           "SubnetId"                 : "subnet-1d39e437",
           "PrivateIpAddress"         : "192.168.1.10"
         }],
-        "UserData"       : { "Fn::Base64" : { "Fn::Join" : ["", [
-             "#!/bin/bash -xe\n",
-             "dnf install -y nano python\n",
-             "pip install --upgrade pip\n",
-             "pip install awscli\n",
-             "aws s3 cp s3://dstresearch/backups/oso/kube-up.tar.gz .\n",
-             "tar xvfz kube-up.tar.gz && rm kube-up.tar.gz && ./kube-up.sh\n"
+        "UserData"       : { "Fn::Base64" : { "Fn::Join" : ["\n", [
+             "#!/bin/bash",
+             "dnf install -y nano python",
+             "pip install --upgrade pip",
+             "pip install awscli",
+             "mkdir -p /opt/origin && cd /opt/origin",
+             "aws s3 cp s3://dstresearch/backups/oso/kube-up.tar.gz .",
+             "tar xvfz kube-up.tar.gz && rm kube-up.tar.gz && ./kube-up.sh"
         ]]}}
       }
 
