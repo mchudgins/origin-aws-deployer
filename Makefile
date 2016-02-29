@@ -24,7 +24,7 @@ deploy: kube-up.tar.gz node-up.tar.gz
 launch-master:
 	aws cloudformation create-stack --stack-name oso-master \
 	 	--template-body file:///${PWD}/oso-master.json \
-		--parameters ParameterKey=InstanceType,ParameterValue=m4.large \
+		--parameters ParameterKey=InstanceType,ParameterValue=t2.medium \
 			ParameterKey=KeyName,ParameterValue=apache-test
 
 launch-node0:
@@ -32,18 +32,18 @@ launch-node0:
 	 	--template-body file:///${PWD}/oso-minion.json \
 		--parameters ParameterKey=IPAddress,ParameterValue=192.168.1.20 \
 			ParameterKey=NodeName,ParameterValue=node0 \
-			ParameterKey=InstanceType,ParameterValue=m4.large
+			ParameterKey=InstanceType,ParameterValue=t2.large
 
 launch-node1:
 	aws cloudformation create-stack --stack-name oso-node1 \
 	 	--template-body file:///${PWD}/oso-minion.json \
 		--parameters ParameterKey=IPAddress,ParameterValue=192.168.1.21 \
 			ParameterKey=NodeName,ParameterValue=node1 \
-			ParameterKey=InstanceType,ParameterValue=m4.large
+			ParameterKey=InstanceType,ParameterValue=t2.large
 
 launch-node2:
 	aws cloudformation create-stack --stack-name oso-node2 \
 	 	--template-body file:///${PWD}/oso-minion.json \
 		--parameters ParameterKey=IPAddress,ParameterValue=192.168.1.22 \
 			ParameterKey=NodeName,ParameterValue=node2 \
-			ParameterKey=InstanceType,ParameterValue=m4.large
+			ParameterKey=InstanceType,ParameterValue=t2.large
