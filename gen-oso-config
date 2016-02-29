@@ -1,15 +1,25 @@
 #! /bin/bash
 
+TWEAK_MASTER=~/mod-config.py
+MASTER_IP=192.168.1.10
+PUBLIC_IP=`curl http://169.254.169.254/latest/meta-data/public-ipv4/`
+
 if [[ -d openshift.local.config ]]; then
   rm -rf openshift.local.config
 fi
 
-./openshift start master --write-config=openshift.local.config/master --master=192.168.1.10:8443
+./openshift start master --write-config=openshift.local.config/master \
+  --master=${MASTER_IP}:8443
+sudo ${TWEAK_MASTER} ${PUBLIC_IP}
+
 
 for i in `seq 20 29`; do
   NODE=192-168-1-$i;
   NODEIP=192.168.1.$i;
-  ./oadm create-node-config --node-dir=openshift.local.config/ip-${NODE} --node=ip-${NODE}.ec2.internal --hostnames=ip-${NODE}.ec2.internal,${NODEIP} --master=https://192.168.1.10:8443;
+  ./oadm create-node-config --node-dir=openshift.local.config/ip-${NODE} \
+    --node=ip-${NODE}.ec2.internal \
+    --hostnames=ip-${NODE}.ec2.internal,${NODEIP} \
+    --master=https://${MASTER_IP}:8443;
   ./mod-node-config.py openshift.local.config/ip-${NODE}/node-config.yaml
 done
 

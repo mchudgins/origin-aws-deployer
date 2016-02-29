@@ -127,7 +127,9 @@
              "#!/bin/bash -xe\n",
              "dnf install -y nano python\n",
              "pip install --upgrade pip\n",
-             "pip install awscli\n"
+             "pip install awscli\n",
+             "aws s3 cp s3://dstresearch/backups/oso/kube-up.tar.gz .\n",
+             "tar xvfz kube-up.tar.gz && rm kube-up.tar.gz && ./kube-up.sh\n"
         ]]}}
       }
 
