@@ -11,4 +11,4 @@ node-up.tar.gz: node-up.sh mod-node-config.py openshift-sdn-ovs openshift-sdn-do
 
 deploy: kube-up.tar.gz node-up.tar.gz
 	aws s3 cp kube-up.tar.gz s3://dstresearch/backups/oso/
-	aws s3 cp node-up.tar.gz s3://dstresearch/backups/oso
+	aws s3 cp node-up.tar.gz s3://dstresearch/backups/oso/
