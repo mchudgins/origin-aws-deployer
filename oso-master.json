@@ -138,7 +138,7 @@
 
   "Outputs" : {
     "URL" : {
-      "Value" : { "Fn::Join" : [ "", ["http://", { "Fn::GetAtt" : ["MasterInstance", "PublicIp"] }, ":8443/"]]},
+      "Value" : { "Fn::Join" : [ "", ["https://", { "Fn::GetAtt" : ["MasterInstance", "PublicIp"] }, ":8443/"]]},
       "Description" : "Newly created Openshift console URL"
     }
   }

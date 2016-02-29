@@ -14,13 +14,13 @@ if [[ ! -e .master-installed ]]; then
 #sudo systemctl enable openvswitch
 #sudo systemctl start openvswitch
 
-  curl -sL ${SERVER_DOWNLOAD} -o ${TARFILE}
-  tar xvfz ${TARFILE} --strip-components=1
+  curl -sL ${SERVER_DOWNLOAD} -o /tmp/${TARFILE}
+  tar xvfz /tmp/${TARFILE} --strip-components=1
   #sudo sed -i "s/^OPTIONS.*/OPTIONS=\'--selinux-enabled --insecure-registry 172.30.0.0\/16\'/g" /etc/sysconfig/docker
   #sudo systemctl enable docker
   #sudo systemctl start docker
 
-  gen-oso-config && aws s3 cp oso-config.tar.gz s3://dstresearch/backups/oso/
+  ./gen-oso-config && aws s3 cp oso-config.tar.gz s3://dstresearch/backups/oso/
 
   touch .master-installed
 fi
