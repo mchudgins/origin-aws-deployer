@@ -24,7 +24,8 @@ if [[ ! -e .oso-installed ]]; then
   systemctl start --no-block openvswitch
 
   systemctl enable docker
-  # grrrr, need to start blocker in the delayed-launcher
+  # grrrr, need to start docker in the delayed-launcher 'cause cloud-init launders
+  # block other systemd process! #@!$%
   #sudo systemctl start --no-block docker
   sed -i "s/^OPTIONS.*/OPTIONS=\'--selinux-enabled --insecure-registry 172.30.0.0\/16\'/g" /etc/sysconfig/docker
 
