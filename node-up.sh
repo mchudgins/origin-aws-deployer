@@ -7,34 +7,38 @@ TARFILE=ose.tar.gz
 NODE=`hostname -s`
 
 if [[ ! -e .oso-installed ]]; then
-  sudo dnf install -y bash-completion bind-utils bridge-utils docker ethtool iptables-services nano net-tools openvswitch python
-  sudo pip install --upgrade pip
-  sudo pip install pyyaml awscli
+  dnf install -y bash-completion bind-utils bridge-utils docker ethtool iptables-services nano net-tools openvswitch python
+  pip install --upgrade pip
+  pip install pyyaml awscli
 
-  sudo hostname ${NODE}.ec2.internal
-  sudo sysctl -w net.ipv4.ip_forward=1
+  hostname ${NODE}.ec2.internal
+  sysctl -w net.ipv4.ip_forward=1
 
   if [[ ! -f /tmp/${TARFILE} ]]; then
         curl -sL ${SERVER_DOWNLOAD} -o /tmp/${TARFILE}
         tar xvfz /tmp/${TARFILE} --strip-components=1
+        rm /tmp/${TARFILE}
   fi
 
-  sudo systemctl enable openvswitch
-  sudo systemctl start openvswitch
+  systemctl enable openvswitch
+  systemctl start --no-block openvswitch
 
-  sudo sed -i "s/^OPTIONS.*/OPTIONS=\'--selinux-enabled --insecure-registry 172.30.0.0\/16\'/g" /etc/sysconfig/docker
-  sudo systemctl enable docker
-  sudo systemctl start docker
+  systemctl enable docker
+  # grrrr, need to start blocker in the delayed-launcher
+  #sudo systemctl start --no-block docker
+  sed -i "s/^OPTIONS.*/OPTIONS=\'--selinux-enabled --insecure-registry 172.30.0.0\/16\'/g" /etc/sysconfig/docker
 
+  OSO_CONFIG=/tmp/oso-config.tar.gz
   if [[ ! -d openshift.local.config ]]; then
-        aws s3 cp ${CONFIG_TARBALL} /tmp/oso-config.tar.gz
-        tar xvfz /tmp/oso-config.tar.gz
+        aws s3 cp ${CONFIG_TARBALL} ${OSO_CONFIG}
+        tar xvfz ${OSO_CONFIG} openshift.local.config/${NODE}/
+        rm ${OSO_CONFIG}
   fi
 
-  sudo cp /home/fedora/openshift-sdn-ovs /sbin/openshift-sdn-ovs
-  sudo cp /home/fedora/openshift-sdn-docker-setup.sh /sbin
+  cp openshift-sdn-ovs /sbin/openshift-sdn-ovs
+  cp openshift-sdn-docker-setup.sh /sbin
 
   touch .oso-installed
 fi
 
-sudo ./openshift start node --config=/home/fedora/openshift.local.config/${NODE}/node-config.yaml --loglevel=5
+./delayed-launcher /opt/origin/openshift.local.config/${NODE}/node-config.yaml 60 &

@@ -1,0 +1,152 @@
+{
+  "AWSTemplateFormatVersion" : "2010-09-09",
+
+  "Description" : "AWS CloudFormation Template to launch an Openshift Node in the 'oso-test' VPC",
+
+  "Parameters" : {
+
+    "NodeName": {
+      "Description" : "Name tag for this instance",
+      "Type": "String",
+      "Default": "node0",
+      "ConstraintDescription" : ""
+    },
+
+    "InstanceType" : {
+      "Description" : "Openshift Node EC2 instance type",
+      "Type" : "String",
+      "Default" : "t2.micro",
+      "AllowedValues" : [ "t2.micro", "t2.small", "t2.medium", "t2.large", "m4.large", "m4.xlarge", "m4.2xlarge" ],
+      "ConstraintDescription" : "must be a valid EC2 instance type."
+    },
+
+    "KeyName": {
+      "Description" : "Name of an existing EC2 KeyPair to enable SSH access to the instance",
+      "Type": "AWS::EC2::KeyPair::KeyName",
+      "Default": "apache-test",
+      "ConstraintDescription" : "must be the name of an existing EC2 KeyPair."
+    },
+
+    "IPAddress": {
+      "Description" : "IP Address of the node",
+      "Type": "String",
+      "Default": "192.168.1.20",
+      "ConstraintDescription" : "must be in the range 192.168.1.20 - 192.168.1.29."
+    }
+
+  },
+
+  "Mappings" : {
+    "Region2Examples" : {
+      "us-east-1"      : { "Examples" : "https://s3.amazonaws.com/cloudformation-examples-us-east-1" },
+      "us-west-2"      : { "Examples" : "https://s3-us-west-2.amazonaws.com/cloudformation-examples-us-west-2" },
+      "us-west-1"      : { "Examples" : "https://s3-us-west-1.amazonaws.com/cloudformation-examples-us-west-1" },
+      "eu-west-1"      : { "Examples" : "https://s3-eu-west-1.amazonaws.com/cloudformation-examples-eu-west-1" },
+      "eu-central-1"   : { "Examples" : "https://s3-eu-central-1.amazonaws.com/cloudformation-examples-eu-central-1" },
+      "ap-southeast-1" : { "Examples" : "https://s3-ap-southeast-1.amazonaws.com/cloudformation-examples-ap-southeast-1" },
+      "ap-northeast-1" : { "Examples" : "https://s3-ap-northeast-1.amazonaws.com/cloudformation-examples-ap-northeast-1" },
+      "ap-southeast-2" : { "Examples" : "https://s3-ap-southeast-2.amazonaws.com/cloudformation-examples-ap-southeast-2" },
+      "sa-east-1"      : { "Examples" : "https://s3-sa-east-1.amazonaws.com/cloudformation-examples-sa-east-1" },
+      "cn-north-1"     : { "Examples" : "https://s3.cn-north-1.amazonaws.com.cn/cloudformation-examples-cn-north-1" }
+    }
+,
+    "AWSInstanceType2Arch" : {
+      "t1.micro"    : { "Arch" : "PV64"   },
+      "t2.micro"    : { "Arch" : "HVM64"  },
+      "t2.small"    : { "Arch" : "HVM64"  },
+      "t2.medium"   : { "Arch" : "HVM64"  },
+      "m1.small"    : { "Arch" : "PV64"   },
+      "m1.medium"   : { "Arch" : "PV64"   },
+      "m1.large"    : { "Arch" : "PV64"   },
+      "m1.xlarge"   : { "Arch" : "PV64"   },
+      "m2.xlarge"   : { "Arch" : "PV64"   },
+      "m2.2xlarge"  : { "Arch" : "PV64"   },
+      "m2.4xlarge"  : { "Arch" : "PV64"   },
+      "m3.medium"   : { "Arch" : "HVM64"  },
+      "m3.large"    : { "Arch" : "HVM64"  },
+      "m3.xlarge"   : { "Arch" : "HVM64"  },
+      "m3.2xlarge"  : { "Arch" : "HVM64"  },
+      "c1.medium"   : { "Arch" : "PV64"   },
+      "c1.xlarge"   : { "Arch" : "PV64"   },
+      "c3.large"    : { "Arch" : "HVM64"  },
+      "c3.xlarge"   : { "Arch" : "HVM64"  },
+      "c3.2xlarge"  : { "Arch" : "HVM64"  },
+      "c3.4xlarge"  : { "Arch" : "HVM64"  },
+      "c3.8xlarge"  : { "Arch" : "HVM64"  },
+      "c4.large"    : { "Arch" : "HVM64"  },
+      "c4.xlarge"   : { "Arch" : "HVM64"  },
+      "c4.2xlarge"  : { "Arch" : "HVM64"  },
+      "c4.4xlarge"  : { "Arch" : "HVM64"  },
+      "c4.8xlarge"  : { "Arch" : "HVM64"  },
+      "g2.2xlarge"  : { "Arch" : "HVMG2"  },
+      "r3.large"    : { "Arch" : "HVM64"  },
+      "r3.xlarge"   : { "Arch" : "HVM64"  },
+      "r3.2xlarge"  : { "Arch" : "HVM64"  },
+      "r3.4xlarge"  : { "Arch" : "HVM64"  },
+      "r3.8xlarge"  : { "Arch" : "HVM64"  },
+      "i2.xlarge"   : { "Arch" : "HVM64"  },
+      "i2.2xlarge"  : { "Arch" : "HVM64"  },
+      "i2.4xlarge"  : { "Arch" : "HVM64"  },
+      "i2.8xlarge"  : { "Arch" : "HVM64"  },
+      "d2.xlarge"   : { "Arch" : "HVM64"  },
+      "d2.2xlarge"  : { "Arch" : "HVM64"  },
+      "d2.4xlarge"  : { "Arch" : "HVM64"  },
+      "d2.8xlarge"  : { "Arch" : "HVM64"  },
+      "hi1.4xlarge" : { "Arch" : "HVM64"  },
+      "hs1.8xlarge" : { "Arch" : "HVM64"  },
+      "cr1.8xlarge" : { "Arch" : "HVM64"  },
+      "cc2.8xlarge" : { "Arch" : "HVM64"  }
+    }
+,
+    "AWSRegionArch2AMI" : {
+      "us-east-1"        : {"PV64" : "NOT_SUPPORTED", "HVM64" : "ami-7b8afa11", "HVMG2" : "ami-518bfb3b"},
+      "us-west-2"        : {"PV64" : "NOT_SUPPORTED", "HVM64" : "ami-20203441", "HVMG2" : "ami-ca2430ab"},
+      "us-west-1"        : {"PV64" : "NOT_SUPPORTED", "HVM64" : "ami-a6fc90c6", "HVMG2" : "ami-ecff938c"},
+      "eu-west-1"        : {"PV64" : "NOT_SUPPORTED", "HVM64" : "ami-080bd47b", "HVMG2" : "ami-e00dd293"},
+      "eu-central-1"     : {"PV64" : "NOT_SUPPORTED", "HVM64" : "ami-084d5e64", "HVMG2" : "ami-ac4d5ec0"},
+      "ap-northeast-1"   : {"PV64" : "NOT_SUPPORTED", "HVM64" : "ami-9cba7dff", "HVMG2" : "ami-4bb87f28"},
+      "ap-southeast-1"   : {"PV64" : "NOT_SUPPORTED", "HVM64" : "ami-b4193cda", "HVMG2" : "ami-7d1c3913"},
+      "ap-southeast-2"   : {"PV64" : "NOT_SUPPORTED", "HVM64" : "ami-90d887f3", "HVMG2" : "ami-17d98674"},
+      "sa-east-1"        : {"PV64" : "NOT_SUPPORTED", "HVM64" : "ami-e908b085", "HVMG2" : "ami-9009b1fc"}
+    }
+
+  },
+
+  "Resources" : {
+
+    "NodeInstance" : {
+      "Type" : "AWS::EC2::Instance",
+      "Metadata" : {
+        "Comment" : "Openshift Node"
+      },
+
+      "Properties" : {
+        "AvailabilityZone" : "us-east-1e",
+        "IamInstanceProfile" : "oso",
+        "ImageId" : "ami-1033037a",
+        "InstanceType" : { "Ref" : "InstanceType" },
+        "KeyName" : { "Ref" : "KeyName" },
+        "Tags" : [ {"Key" : "Application", "Value" : { "Ref" : "AWS::StackId"} },
+          {"Key" : "Name", "Value" : { "Ref" : "NodeName" } } ],
+        "NetworkInterfaces" : [{
+          "GroupSet"                 : [ "sg-3f835347" ],
+          "AssociatePublicIpAddress" : "true",
+          "DeviceIndex"              : "0",
+          "DeleteOnTermination"      : "true",
+          "SubnetId"                 : "subnet-1d39e437",
+          "PrivateIpAddress"         : { "Ref" : "IPAddress" }
+        }],
+        "UserData"       : { "Fn::Base64" : { "Fn::Join" : ["\n", [
+             "#!/bin/bash",
+             "dnf install -y nano python",
+             "pip install --upgrade pip",
+             "pip install awscli",
+             "mkdir -p /opt/origin && cd /opt/origin",
+             "aws s3 cp s3://dstresearch/backups/oso/node-up.tar.gz .",
+             "tar xvfz node-up.tar.gz && rm node-up.tar.gz && ./node-up.sh"
+        ]]}}
+      }
+
+    }
+  }
+}

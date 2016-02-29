@@ -19,7 +19,7 @@ def main(argv):
 
 	list_doc[ 'masterPublicURL' ] = 'https://' + public_ip + ':8443'
 
-	list_doc[ 'networkConfig' ][ 'networkPluginName' ] = 'redhat/openshift-ovs-subnet'
+	list_doc[ 'networkConfig' ][ 'networkPluginName' ] = 'redhat/openshift-ovs-multitenant'
 
 	with open( yaml_file, "w" ) as f:
 		yaml.dump(list_doc, f)
