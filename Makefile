@@ -21,6 +21,9 @@ deploy: kube-up.tar.gz node-up.tar.gz
 		&& aws s3 cp oso-master.json \
 			s3://dstresearch-public/CloudFormation/oso-minion.json
 
+bake-master:
+	./bake-master-image.sh
+
 launch-master:
 	aws cloudformation create-stack --stack-name oso-master \
 	 	--template-body file:///${PWD}/oso-master.json \
