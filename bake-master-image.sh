@@ -55,7 +55,7 @@ REGION=`curl -s http://169.254.169.254/latest/meta-data/placement/availability-z
 aws ec2 create-image --instance-id ${INSTANCE_ID} \
   --region=${REGION} \
   --name "Openshift-v${RELEASE}-Master-${TODAY}" \
-  --description "baked image of Openshift Master, v${RELEASE} built on ${BASE_OS} ${UNAME}"
+  --description "Openshift Master, v${RELEASE} built on ${BASE_OS} ${UNAME}"
 
 EOF
 chmod +x ${BOOT_FILE}
