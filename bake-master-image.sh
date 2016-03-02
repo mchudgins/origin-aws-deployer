@@ -6,7 +6,7 @@
 
 BASE_AMI="ami-1033037a"
 KEY_NAME="apache-test"
-SSHOPTS="-o ConnectTimeout=5 -o CheckHostIP=no -o StrictHostKeychecking=no -i ${HOME}/certs/${KEY_NAME}.pem"
+SSHOPTS="-q -o ConnectTimeout=5 -o CheckHostIP=no -o StrictHostKeychecking=no -i ${HOME}/certs/${KEY_NAME}.pem"
 UPTIME_CMD="uptime -s"
 
 WORKDIR=`mktemp -d`
@@ -21,6 +21,7 @@ DEFAULT_OPENSHIFT_DOWNLOAD=https://github.com/openshift/origin/releases/download
 TARFILE=ose.tar.gz
 PUBLIC_IP=`curl http://169.254.169.254/latest/meta-data/public-ipv4/`
 INSTANCE_ID=`curl http://169.254.169.254/latest/meta-data/instance-id`
+AMI_ID=`curl http://169.254.169.254/latest/meta-data/ami-id`
 
 if [[ -z "${OPENSHIFT_DOWNLOAD}" ]]; then
   OPENSHIFT_DOWNLOAD=${DEFAULT_OPENSHIFT_DOWNLOAD}
@@ -32,13 +33,15 @@ RELEASE=`echo ${OPENSHIFT_DOWNLOAD} | sed 's/^.*\/v//' | sed 's/\/.*//'`
 echo "Using ${OPENSHIFT_DOWNLOAD} as the source for Openshift Origin, v${RELEASE}."
 
 # hmmmm, need to set the hostname to something the AWS DNS server knows
-sudo hostname `hostname -s`.ec2.internal
+hostname `hostname -s`.ec2.internal
 
 # install dependencies of Openshift + tcpdump and nano for troubleshooting
-sudo dnf install -y bash-completion bind-utils bridge-utils iptables-services \
-  nano net-tools tcpdump python
-sudo pip install --upgrade pip
-sudo pip install awscli pyyaml
+dnf upgrade
+dnf install -y bash-completion bind-utils bridge-utils jq \
+  iptables-services nano net-tools tcpdump python
+pip install --upgrade pip
+pip install awscli pyyaml
+dnf clean all
 
 #sudo systemctl enable rc-local.service
 
@@ -52,10 +55,18 @@ TODAY=`date +%Y%m%d`
 BASE_OS=`cat /etc/redhat-release`
 UNAME=`uname -rvmpio`
 REGION=`curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone | sed 's/[abcdefg]$//'`
+AMI_DESC=`aws ec2 --region=${REGION} describe-images --image-ids ami-1033037a | jq '.Images[0].Name'`
+
+# copy the /var/log/cloud-init-output.log to s3, so we can track what happened.
+echo "/var/log/cloud-init-output.log uploaded to s3://dstresearch/logs/Openshift-v${RELEASE}-Master-${TODAY}-${INSTANCE_ID}.log"
+echo "Requesting AWS to create image:  Openshift-v${RELEASE}-Master-${TODAY}"
+aws s3 cp --region=${REGION} /var/log/cloud-init-output.log \
+  s3://dstresearch/logs/Openshift-v${RELEASE}-Master-${TODAY}-${INSTANCE_ID}.log
+
 aws ec2 create-image --instance-id ${INSTANCE_ID} \
   --region=${REGION} \
   --name "Openshift-v${RELEASE}-Master-${TODAY}" \
-  --description "Openshift Master, v${RELEASE} built on ${BASE_OS} ${UNAME}"
+  --description "Master (only) built from image ${AMI_ID}:${AMI_DESC} (Baker instance ${INSTANCE_ID})"
 
 EOF
 chmod +x ${BOOT_FILE}
@@ -87,7 +98,6 @@ while [[ -z "${PUBLIC_IP}" || "${PUBLIC_IP}" = "null" ]]; do
   sleep 10
   echo -n '.'
   PUBLIC_IP=`aws ec2 describe-instances --instance-ids ${INSTANCE_ID} | jq '.Reservations[0].Instances[0].PublicIpAddress' | sed 's/\"//g'`
-  echo ${PUBLIC_IP}
 done
 
 # tag it
@@ -95,14 +105,33 @@ echo "Tagging ec2 instance"
 aws ec2 create-tags --resources ${INSTANCE_ID} \
   --tags Key="Name",Value="master baker" \
     Key="Expires",Value="`date --date "2 hours" +%Y%m%d%H%M`"
+while [[ $? -ne 0 ]]; do
+  sleep 2
+  aws ec2 create-tags --resources ${INSTANCE_ID} \
+    --tags Key="Name",Value="master baker" \
+      Key="Expires",Value="`date --date "2 hours" +%Y%m%d%H%M`"
+done
+
+#
+# tricky bit.  We want to kill the instance when the AWS image creation process
+# has completed.  Knowing when that happens is hard.  We don't have the new
+# ami-id since the instance shutdowns immediately when the create-image request
+# is made to AWS.  Furthermore, AWS will shutdown the O.S. in order to create the image.
+# This means we have to wait for the image to reboot (or monitor the status
+# of the ami_id, which we don't have).  Therefore, we determine if the system
+# has re-booted by monitoring the 'uptime -s' value (which gives the time of the
+# current boot up).
+#
 
 # wait for the instance to complete the boot enuf to have OpenSSH running
+# and then get the 'uptime -s' value
+INTERVAL=10
 echo ""
 echo "PUBLIC IP Address of ${INSTANCE_ID} is ${PUBLIC_IP}"
-echo "Waiting for instance ${INSTANCE_ID} to complete boot process (10s intervals)."
+echo "Waiting for instance ${INSTANCE_ID} to complete boot process (${INTERVAL}s intervals)."
 UPTIME=`ssh ${SSHOPTS} fedora@${PUBLIC_IP} ${UPTIME_CMD}`
 while [[ -z "${OLD_UPTIME}" ]]; do
-  sleep 10
+  sleep ${INTERVAL}
   echo -n '.'
   UPTIME=`ssh ${SSHOPTS} fedora@${PUBLIC_IP} ${UPTIME_CMD}`
   if [[ $? -eq 0 ]]; then
@@ -110,12 +139,14 @@ while [[ -z "${OLD_UPTIME}" ]]; do
   fi
 done
 
+# now wait for the 'uptime -s' value to change
+INTERVAL=60
 echo ""
-echo "Waiting for instance to complete the AMI creation process (120s intervals)."
+echo "Waiting for instance to complete the AMI creation process (${INTERVAL}s intervals)."
 NEW_UPTIME=`ssh ${SSHOPTS} fedora@${PUBLIC_IP} ${UPTIME_CMD}`
 while [[ -z "${NEW_UPTIME}" || ${NEW_UPTIME} = ${OLD_UPTIME} ]]; do
-  sleep 120
-  echo -n '.'
+  sleep ${INTERVAL}
+#  echo -n '.'
   NEW_UPTIME=`ssh ${SSHOPTS} fedora@${PUBLIC_IP} ${UPTIME_CMD}`
   echo "NEW_UPTIME=${NEW_UPTIME}, OLD_UPTIME=${UPTIME}"
 done
