@@ -3,12 +3,13 @@
 
 all: node-up.tar.gz
 
-node-up.tar.gz: node-up.sh openshift-sdn-ovs openshift-sdn-docker-setup.sh delayed-launcher
+node-sdn-scripts.tar.gz: openshift-sdn-ovs openshift-sdn-docker-setup.sh
 	tar cvfz $@ $^
 
-deploy: oso-master.json oso-minion.json
-	aws cloudformation validate-template \
-		--template-body file:///${PWD}/oso-master.json \
+deploy: oso-master.json oso-minion.json node-sdn-scripts.tar.gz
+	aws s3 cp node-sdn-scripts.tar.gz s3://dstresearch/backups/oso/ \
+		&& aws cloudformation validate-template \
+			--template-body file:///${PWD}/oso-master.json \
 		&& aws s3 cp oso-master.json \
 			s3://dstresearch-public/CloudFormation/oso-master.json \
 		&& aws cloudformation validate-template \

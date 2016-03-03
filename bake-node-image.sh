@@ -40,13 +40,16 @@ hostname `hostname -s`.ec2.internal
 
 # install dependencies of Openshift + tcpdump and nano for troubleshooting
 dnf upgrade
-dnf install -y bash-completion bind-utils bridge-utils ethtool jq \
-  iptables-services nano net-tools python tcpdump
+dnf install -y bash-completion bind-utils bridge-utils docker ethtool jq \
+  iptables-services nano net-tools openvswitch python tcpdump
 pip install --upgrade pip
 pip install awscli pyyaml
 dnf clean all
 
+# enable the services the image will need on launch
 sudo systemctl enable rc-local.service
+sudo systemctl enable openvswitch
+sudo systemctl enable docker
 
 # download & setup the openshift runtimes
 mkdir -p /opt/origin
@@ -56,6 +59,11 @@ curl -sL ${OPENSHIFT_DOWNLOAD} -o /tmp/${TARFILE} \
   && tar xvfz /tmp/${TARFILE} --strip-components=1 \
     --directory bin \
   && rm /tmp/${TARFILE}
+
+# download and setup the openshift sdn scripts
+aws s3 cp --region=${REGION} s3://dstresearch/backups/oso/node-sdn-scripts.tar.gz \
+    /tmp/node-sdn-scripts.tar.gz \
+  && tar xvfz /tmp/node-sdn-scripts.tar.gz --directory /sbin
 
 #-----------------------------------------------------------
 # Create initial-setup.sh
@@ -96,57 +104,6 @@ aws s3 --region=${REGION} cp ${CLUSTER_UPLOAD}/${MASTER_DNS}/config.tar.gz /tmp 
   && echo "downloaded config.tar.gz from s3" \
   && exit 0
 
-# otherwise, create the master certificates and config
-
-/opt/origin/bin/openshift start master \
-  --listen=https://${MASTER_IP}:8443 \
-  --master=https://${MASTER_IP}:8443 \
-  --public-master=https://${MASTER_DNS}:8443 \
-  --network-plugin=redhat/openshift-ovs-multitenant \
-  --write-config=openshift.local.config/master
-
-# customization's from the default
-sed -i 's/apiServerArguments:/apiServerArguments: {cloud-config: /etc/aws/aws.conf, cloud-provider: aws}/' \
-  openshift.local.config/master
-sed -i 's/controllerArguments:/controllerArguments: {cloud-config: /etc/aws/aws.conf, cloud-provider: aws}/' \
-    openshift.local.config/master
-
-# now that the CA has been created (by the start master cmd),
-# we need to create the node config's and certificates
-# we'll create twenty of 'em for ip addresses 192.168.1.20 thru .39
-
-for i in `seq 20 39`; do
-  NODE=192-168-1-$i;
-  NODEIP=192.168.1.$i;
-  /opt/origin/bin/oadm create-node-config \
-    --node-dir=openshift.local.config/ip-${NODE} \
-    --node=ip-${NODE}.ec2.internal \
-    --hostnames=ip-${NODE}.ec2.internal,${NODEIP} \
-    --network-plugin=redhat/openshift-ovs-multitenant \
-    --master=https://${MASTER_IP}:8443;
-
-  # tweak the mtu settings.  AWS supports an mtu of 9000
-  sed -i 's/mtu: *1450/mtu: 8950/' openshift.local.config/ip-${NODE}/node-config.yaml
-
-  # set the kubelet arg's
-  echo "kubeletArguments: {cloud-config: /etc/aws/aws.conf, cloud-provider: aws}" \
-    >> openshift.local.config/ip-${NODE}/node-config.yaml
-done
-
-# copy the configs up to s3
-tar cvfz /tmp/config.tar.gz openshift.local.config \
-  && aws s3 --region=${REGION} cp \
-    /tmp/config.tar.gz ${CLUSTER_UPLOAD}/${MASTER_DNS}/config.tar.gz \
-  && rm /tmp/config.tar.gz \
-  && echo "uploaded config.tar.gz to s3"
-
-# now setup the local machine's config as a master
-mkdir -p /etc/origin/openshift.local.config/master
-#mkdir -p /etc/origin/openshift.local.config/`hostname -s`
-cp -ra openshift.local.config/master/* /etc/origin/openshift.local.config/master
-#cp -ra openshift.local.config/`hostname -s` /etc/origin/openshift.local.config/`hostname -s`
-rm -rf openshift.local.config
-
 # setup the aws.conf file, per https://docs.openshift.org/latest/install_config/configuring_aws.html
 AWSCONFSUBDIR=/etc/aws
 AWSCONF=${AWSCONFSUBDIR}/aws.conf
@@ -163,15 +120,14 @@ chmod +x bin/initial-setup.sh
 # Create boot script to launch openshift
 #-----------------------------------------------------------
 
-cat <<"EOF_RC_LOCAL" >bin/launch-master.sh
+cat <<"EOF_RC_LOCAL" >bin/launch-node.sh
 #! /bin/bash
 
-MASTER_IP=192.168.1.10
-DEFAULT_MASTER_DNS=dev.dstcorp.io
+DEFAULT_MASTER_IP=192.168.1.10
 DEFAULT_CLUSTER_UPLOAD=s3://dstresearch/cluster-configs
 REGION=`curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone | sed 's/[abcdefg]$//'`
-
-MASTER_CONFIG=/etc/origin/openshift.local.config/master/master-config.yaml
+NODE=`hostname -s`
+NODE_CONFIG=/etc/origin/openshift.local.config/${NODE}/node-config.yaml
 OSO_BIN=/opt/origin/bin
 
 # hmmmm, need to set the hostname to something the AWS DNS server knows
@@ -181,34 +137,30 @@ if [[ -e /tmp/launch-config ]]; then
   source /tmp/launch-config
 fi
 
-if [[ -z "${MASTER_DNS}" ]]; then
-  MASTER_DNS=${DEFAULT_MASTER_DNS}
-fi
-
-if [[ -z "${CLUSTER_UPLOAD}" ]]; then
-  CLUSTER_UPLOAD=${DEFAULT_CLUSTER_UPLOAD}
+if [[ -z "${MASTER_IP}" ]]; then
+  MASTER_IP=${DEFAULT_MASTER_IP}
 fi
 
 # debug:  print current VARS for launch-master.sh
-echo "current VARS for launch-master.sh"
-echo "MASTER_DNS:  ${MASTER_DNS}"
-echo "CLUSTER_UPLOAD:  ${CLUSTER_UPLOAD}"
+echo "current VARS for launch-node.sh"
+echo "MASTER_IP:  ${MASTER_IP}"
 echo "REGION:  ${REGION}"
+echo "NODE_CONFIG:  ${NODE_CONFIG}"
 echo "curling:  `curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone`"
 
 # create the initial config, if it doesn't exist
-if [[ ! -f ${MASTER_CONFIG} ]]; then
+if [[ ! -f ${NODE_CONFIG} ]]; then
   ${OSO_BIN}/initial-setup.sh
 fi
 
 # launch openshift
-${OSO_BIN}/openshift start master \
+${OSO_BIN}/openshift start node \
   --loglevel 5 \
-  --config=${MASTER_CONFIG} \
-    >>/var/log/openshift-master.log 2>>/var/log/openshift-master.log &
+  --config=${NODE_CONFIG} \
+    >>/var/log/openshift-node.log 2>>/var/log/openshift-node.log &
 
 EOF_RC_LOCAL
-chmod +x bin/launch-master.sh
+chmod +x bin/launch-node.sh
 
 # now, create the image
 TODAY=`date +%Y%m%d%H%M`
@@ -217,17 +169,17 @@ UNAME=`uname -rvmpio`
 AMI_DESC=`aws ec2 --region=${REGION} describe-images --image-ids ami-1033037a | jq '.Images[0].Name'`
 
 # copy the /var/log/cloud-init-output.log to s3, so we can track what happened.
-echo "/var/log/cloud-init-output.log uploaded to s3://dstresearch/logs/Openshift-v${RELEASE}-Master-${TODAY}-${INSTANCE_ID}.log"
-echo "Requesting AWS create image:  Openshift-v${RELEASE}-Master-${TODAY}"
+echo "/var/log/cloud-init-output.log uploaded to s3://dstresearch/logs/Openshift-v${RELEASE}-Node-${TODAY}-${INSTANCE_ID}.log"
+echo "Requesting AWS create image:  Openshift-v${RELEASE}-Node-${TODAY}"
 cp /var/log/cloud-init-output.log /tmp \
   && gzip /tmp/cloud-init-output.log \
-  && aws s3 cp --region=${REGION} /var/log/cloud-init-output.log.gz \
-    s3://dstresearch/logs/Openshift-v${RELEASE}-Master-${TODAY}-${INSTANCE_ID}.log.gz
+  && aws s3 cp --region=${REGION} /tmp/cloud-init-output.log.gz \
+    s3://dstresearch/logs/Openshift-v${RELEASE}-Node-${TODAY}-${INSTANCE_ID}.log.gz
 
 aws ec2 create-image --instance-id ${INSTANCE_ID} \
   --region=${REGION} \
-  --name "Openshift-v${RELEASE}-Master-${TODAY}" \
-  --description "Master (only) built from image ${AMI_ID}:${AMI_DESC} (Baker instance ${INSTANCE_ID})"
+  --name "Openshift-v${RELEASE}-Node-${TODAY}" \
+  --description "Node built from image ${AMI_ID}:${AMI_DESC} (Baker instance ${INSTANCE_ID})"
 
 EOF
 chmod +x ${BOOT_FILE}
@@ -263,12 +215,12 @@ done
 # tag it
 echo "Tagging ec2 instance"
 aws ec2 create-tags --resources ${INSTANCE_ID} \
-  --tags Key="Name",Value="master baker" \
+  --tags Key="Name",Value="node baker" \
     Key="Expires",Value="`date --date "2 hours" +%Y%m%d%H%M`"
 while [[ $? -ne 0 ]]; do
   sleep 2
   aws ec2 create-tags --resources ${INSTANCE_ID} \
-    --tags Key="Name",Value="master baker" \
+    --tags Key="Name",Value="node baker" \
       Key="Expires",Value="`date --date "2 hours" +%Y%m%d%H%M`"
 done
 

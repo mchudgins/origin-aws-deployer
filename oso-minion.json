@@ -123,7 +123,7 @@
       "Properties" : {
         "AvailabilityZone" : "us-east-1e",
         "IamInstanceProfile" : "oso",
-        "ImageId" : "ami-1033037a",
+        "ImageId" : "ami-cc5e66a6",
         "InstanceType" : { "Ref" : "InstanceType" },
         "KeyName" : { "Ref" : "KeyName" },
         "Tags" : [ {"Key" : "Application", "Value" : { "Ref" : "AWS::StackId"} },
@@ -137,13 +137,14 @@
           "PrivateIpAddress"         : { "Ref" : "IPAddress" }
         }],
         "UserData"       : { "Fn::Base64" : { "Fn::Join" : ["\n", [
-             "#!/bin/bash",
-             "dnf install -y nano python",
-             "pip install --upgrade pip",
-             "pip install awscli",
-             "mkdir -p /opt/origin && cd /opt/origin",
-             "aws s3 cp s3://dstresearch/backups/oso/node-up.tar.gz .",
-             "tar xvfz node-up.tar.gz && rm node-up.tar.gz && ./node-up.sh"
+          "#!/bin/bash",
+          "# configure the public ip address of the openshift master",
+          "cat <<\"EOF\" >/tmp/launch-config",
+          "#MASTER_DNS=`curl -s http://169.254.169.254/latest/meta-data/public-ipv4`",
+          "MASTER_DNS=dev.dstcorp.io",
+          "EOF",
+          "# launch the Openshift node",
+          "/opt/origin/bin/launch-node.sh"
         ]]}}
       }
 
