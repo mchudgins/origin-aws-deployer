@@ -110,7 +110,7 @@
       "Properties" : {
         "AvailabilityZone" : "us-east-1e",
         "IamInstanceProfile" : "oso",
-        "ImageId" : "ami-1033037a",
+        "ImageId" : "ami-eae7de80",
         "InstanceType" : { "Ref" : "InstanceType" },
         "KeyName" : { "Ref" : "KeyName" },
         "Tags" : [ {"Key" : "Application", "Value" : { "Ref" : "AWS::StackId"} },
@@ -125,12 +125,8 @@
         }],
         "UserData"       : { "Fn::Base64" : { "Fn::Join" : ["\n", [
              "#!/bin/bash",
-             "dnf install -y nano python",
-             "pip install --upgrade pip",
-             "pip install awscli",
-             "mkdir -p /opt/origin && cd /opt/origin",
-             "aws s3 cp s3://dstresearch/backups/oso/kube-up.tar.gz .",
-             "tar xvfz kube-up.tar.gz && rm kube-up.tar.gz && ./kube-up.sh"
+             "#",
+             "echo Starting Openshift."
         ]]}}
       }
 

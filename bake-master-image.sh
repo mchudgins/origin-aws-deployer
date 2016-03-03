@@ -46,7 +46,7 @@ pip install --upgrade pip
 pip install awscli pyyaml
 dnf clean all
 
-#sudo systemctl enable rc-local.service
+sudo systemctl enable rc-local.service
 
 # download & setup the openshift runtimes
 mkdir -p /opt/origin
@@ -123,6 +123,43 @@ cp -ra openshift.local.config/master/* /etc/origin/openshift.local.config/master
 rm -rf openshift.local.config
 EOF_SETUP
 chmod +x bin/initial-setup.sh
+
+#-----------------------------------------------------------
+# Create boot script to launch openshift
+#-----------------------------------------------------------
+
+cat <<"EOF_RC_LOCAL" >/etc/rc.d/rc.local
+#! /bin/bash
+
+MASTER_IP=192.168.1.10
+DEFAULT_MASTER_DNS=dev.dstcorp.io
+DEFAULT_CLUSTER_UPLOAD=s3://dstresearch/cluster-configs
+REGION=`curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone | sed 's/[abcdefg]$//'`
+
+MASTER_CONFIG=/etc/origin/openshift.local.config/master/master-config.yaml
+OSO_BIN=/opt/origin/bin
+
+if [[ -e /tmp/launch-config ]]; then
+  source /tmp/launch-config
+fi
+
+if [[ -z "${MASTER_DNS}" ]]; then
+  MASTER_DNS=${DEFAULT_MASTER_DNS}
+fi
+
+# create the initial config, if it doesn't exist
+if [[ ! -f ${MASTER_CONFIG} ]]; then
+  ${OSO_BIN}/initial-setup.sh
+fi
+
+# launch openshift
+${OSO_BIN}/openshift start master \
+  --loglevel 5 \
+  --config=${MASTER_CONFIG} \
+    >>/var/log/openshift-master.log 2>>/var/log/openshift-master.log &
+
+EOF_RC_LOCAL
+chmod +x /etc/rc.d/rc.local
 
 # now, create the image
 TODAY=`date +%Y%m%d`
