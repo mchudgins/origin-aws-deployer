@@ -106,9 +106,13 @@ aws s3 --region=${REGION} cp ${CLUSTER_UPLOAD}/${MASTER_DNS}/config.tar.gz /tmp 
   --write-config=openshift.local.config/master
 
 # customization's from the default
+  # configure for AWS
 sed -i 's/apiServerArguments:/apiServerArguments: {cloud-config: \/etc\/aws\/aws.conf, cloud-provider: aws}/' \
   openshift.local.config/master
 sed -i 's/controllerArguments:/controllerArguments: {cloud-config: \/etc\/aws\/aws.conf, cloud-provider: aws}/' \
+    openshift.local.config/master
+  # configure the router to use the MASTER_DNS
+sed -i 's/subDomain:/controllerArguments: {cloud-config: \/etc\/aws\/aws.conf, cloud-provider: aws}/' \
     openshift.local.config/master
 
 # now that the CA has been created (by the start master cmd),
@@ -129,7 +133,7 @@ for i in `seq 20 39`; do
   sed -i 's/mtu: *1450/mtu: 8950/' openshift.local.config/ip-${NODE}/node-config.yaml
 
   # set the kubelet arg's
-  echo -e "kubeletArguments:\n  cloud-config:\n  - /etc/aws/aws.conf\n  cloud-provider:\n  - aws}" \
+  echo -e "kubeletArguments:\n  cloud-config:\n  - /etc/aws/aws.conf\n  cloud-provider:\n  - aws" \
     >> openshift.local.config/ip-${NODE}/node-config.yaml
 done
 
@@ -221,7 +225,7 @@ echo "/var/log/cloud-init-output.log uploaded to s3://dstresearch/logs/Openshift
 echo "Requesting AWS create image:  Openshift-v${RELEASE}-Master-${TODAY}"
 cp /var/log/cloud-init-output.log /tmp \
   && gzip /tmp/cloud-init-output.log \
-  && aws s3 cp --region=${REGION} /var/log/cloud-init-output.log.gz \
+  && aws s3 cp --region=${REGION} /tmp/cloud-init-output.log.gz \
     s3://dstresearch/logs/Openshift-v${RELEASE}-Master-${TODAY}-${INSTANCE_ID}.log.gz
 
 aws ec2 create-image --instance-id ${INSTANCE_ID} \
@@ -318,3 +322,5 @@ aws ec2 terminate-instances --instance-ids ${INSTANCE_ID}
 # done
 cd -
 rm -rf ${WORKDIR}
+
+echo "run 'oc new-app library/java:jdk' on the Master."

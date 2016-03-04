@@ -76,6 +76,7 @@ MASTER_IP=192.168.1.10
 DEFAULT_MASTER_DNS=dev.dstcorp.io
 DEFAULT_CLUSTER_UPLOAD=s3://dstresearch/cluster-configs
 REGION=`curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone | sed 's/[abcdefg]$//'`
+ZONE=`curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone`
 
 if [[ -e /tmp/launch-config ]]; then
   source /tmp/launch-config
@@ -109,7 +110,7 @@ AWSCONF=${AWSCONFSUBDIR}/aws.conf
 if [[ ! -f ${AWSCONF} ]]; then
   mkdir -p ${AWSCONFSUBDIR}
   echo "[Global]" >${AWSCONF}
-  echo "Zone = ${REGION}" >>${AWSCONF}
+  echo "Zone = ${ZONE}" >>${AWSCONF}
 fi
 
 EOF_SETUP
