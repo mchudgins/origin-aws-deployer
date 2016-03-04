@@ -106,9 +106,9 @@ aws s3 --region=${REGION} cp ${CLUSTER_UPLOAD}/${MASTER_DNS}/config.tar.gz /tmp 
   --write-config=openshift.local.config/master
 
 # customization's from the default
-sed -i 's/apiServerArguments:/apiServerArguments: {cloud-config: /etc/aws/aws.conf, cloud-provider: aws}/' \
+sed -i 's/apiServerArguments:/apiServerArguments: {cloud-config: \/etc\/aws\/aws.conf, cloud-provider: aws}/' \
   openshift.local.config/master
-sed -i 's/controllerArguments:/controllerArguments: {cloud-config: /etc/aws/aws.conf, cloud-provider: aws}/' \
+sed -i 's/controllerArguments:/controllerArguments: {cloud-config: \/etc\/aws\/aws.conf, cloud-provider: aws}/' \
     openshift.local.config/master
 
 # now that the CA has been created (by the start master cmd),
@@ -129,7 +129,7 @@ for i in `seq 20 39`; do
   sed -i 's/mtu: *1450/mtu: 8950/' openshift.local.config/ip-${NODE}/node-config.yaml
 
   # set the kubelet arg's
-  echo "kubeletArguments: {cloud-config: /etc/aws/aws.conf, cloud-provider: aws}" \
+  echo -e "kubeletArguments:\n  cloud-config:\n  - /etc/aws/aws.conf\n  cloud-provider:\n  - aws}" \
     >> openshift.local.config/ip-${NODE}/node-config.yaml
 done
 

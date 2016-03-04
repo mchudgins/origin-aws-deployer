@@ -101,8 +101,7 @@ aws s3 --region=${REGION} cp ${CLUSTER_UPLOAD}/${MASTER_DNS}/config.tar.gz /tmp 
   && mkdir -p /etc/origin/openshift.local.config \
   && tar xvfz /tmp/config.tar.gz --directory /etc/origin \
   && rm /tmp/config.tar.gz \
-  && echo "downloaded config.tar.gz from s3" \
-  && exit 0
+  && echo "downloaded config.tar.gz from s3"
 
 # setup the aws.conf file, per https://docs.openshift.org/latest/install_config/configuring_aws.html
 AWSCONFSUBDIR=/etc/aws
