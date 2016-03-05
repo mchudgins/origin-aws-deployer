@@ -39,12 +39,16 @@ echo "Using ${OPENSHIFT_DOWNLOAD} as the source for Openshift Origin, v${RELEASE
 hostname `hostname -s`.ec2.internal
 
 # install dependencies of Openshift + tcpdump and nano for troubleshooting
-dnf upgrade
+# N.B. do not install 'socat' on prod nodes as it allows 'oc port-forward'
+dnf upgrade -y
 dnf install -y bash-completion bind-utils bridge-utils docker ethtool jq \
-  iptables-services nano net-tools openvswitch python tcpdump
+  iptables-services nano net-tools openvswitch python socat tcpdump
 pip install --upgrade pip
 pip install awscli pyyaml
 dnf clean all
+
+# modify the docker startup OPTIONS
+sed -i "s/OPTIONS='/OPTIONS='--insecure-registry=172.30.0.0\/16 /g" /etc/sysconfig/docker
 
 # enable the services the image will need on launch
 sudo systemctl enable rc-local.service
@@ -270,3 +274,5 @@ aws ec2 terminate-instances --instance-ids ${INSTANCE_ID}
 # done
 cd -
 rm -rf ${WORKDIR}
+
+echo "todo:  need to fix up the storage driver for docker. its still a loopback."

@@ -25,6 +25,8 @@ launch-master:
 	 	--template-body file:///${PWD}/oso-master.json \
 		--parameters ParameterKey=InstanceType,ParameterValue=t2.medium \
 			ParameterKey=KeyName,ParameterValue=apache-test
+	echo "run 'sudo /opt/origin/bin/oadm registry --config=/etc/origin/openshift.local.config/master/admin.kubeconfig --credentials=/etc/origin/openshift.local.config/master/openshift-registry.kubeconfig'"
+	echo "run 'oc new-app library/java:jdk' on the Master."
 
 launch-node0:
 	aws cloudformation create-stack --stack-name oso-node0 \

@@ -123,12 +123,18 @@
       "Properties" : {
         "AvailabilityZone" : "us-east-1e",
         "IamInstanceProfile" : "oso",
-        "ImageId" : "ami-05c3fb6f",
+        "ImageId" : "ami-3f320955",
         "InstanceType" : { "Ref" : "InstanceType" },
         "KeyName" : { "Ref" : "KeyName" },
         "Tags" : [ {"Key" : "Application", "Value" : { "Ref" : "AWS::StackId"} },
           {"Key" : "Name", "Value" : { "Ref" : "NodeName" } } ],
-        "NetworkInterfaces" : [{
+          "BlockDeviceMappings" : [
+             {
+                "DeviceName" : "/dev/sda1",
+                "Ebs" : { "VolumeSize" : "75" }
+             }
+          ],
+          "NetworkInterfaces" : [{
           "GroupSet"                 : [ "sg-3f835347" ],
           "AssociatePublicIpAddress" : "true",
           "DeviceIndex"              : "0",

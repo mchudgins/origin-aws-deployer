@@ -39,7 +39,7 @@ echo "Using ${OPENSHIFT_DOWNLOAD} as the source for Openshift Origin, v${RELEASE
 hostname `hostname -s`.ec2.internal
 
 # install dependencies of Openshift + tcpdump and nano for troubleshooting
-dnf upgrade
+dnf upgrade -y
 dnf install -y bash-completion bind-utils bridge-utils ethtool jq \
   iptables-services nano net-tools python tcpdump
 pip install --upgrade pip
@@ -322,5 +322,3 @@ aws ec2 terminate-instances --instance-ids ${INSTANCE_ID}
 # done
 cd -
 rm -rf ${WORKDIR}
-
-echo "run 'oc new-app library/java:jdk' on the Master."
