@@ -117,7 +117,7 @@ aws s3 --region=${REGION} cp ${CLUSTER_UPLOAD}/${MASTER_DNS}/config.tar.gz /tmp 
   && mkdir -p /etc/origin \
   && tar xvfz /tmp/config.tar.gz --directory /etc/origin \
     --strip-components=1 openshift.local.config/${NODE} \
-  && ln -s /etc/origin/${NODE} /etc/origin/node
+  && ln -s /etc/origin/${NODE} /etc/origin/node \
   && rm /tmp/config.tar.gz \
   && echo "downloaded config.tar.gz from s3"
 
@@ -151,7 +151,7 @@ cat <<"EOF_RC_LOCAL" >bin/launch-node.sh
 #! /bin/bash
 
 # until this is launched via systemd, log via logger to journald
-exec 1> >(logger -t openshift-master) 2>&1
+exec 1> >(logger -t openshift-node) 2>&1
 
 DEFAULT_MASTER_IP=192.168.1.10
 DEFAULT_CLUSTER_UPLOAD=s3://dstresearch/cluster-configs
