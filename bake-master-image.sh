@@ -17,7 +17,8 @@ BOOT_FILE=boot.sh
 cat <<"EOF" > ${BOOT_FILE}
 #! /bin/bash
 
-DEFAULT_OPENSHIFT_DOWNLOAD=https://github.com/openshift/origin/releases/download/v1.1.3/openshift-origin-server-v1.1.3-cffae05-linux-64bit.tar.gz
+DEFAULT_OPENSHIFT_DOWNLOAD=https://s3.amazonaws.com/dstresearch/cluster-configs/v1.1.3-570/openshift-origin-server-v1.1.3-570-g8f31847-8f31847-linux-64bit.tar.gz
+#DEFAULT_OPENSHIFT_DOWNLOAD=https://github.com/openshift/origin/releases/download/v1.1.3/openshift-origin-server-v1.1.3-cffae05-linux-64bit.tar.gz
 
 TARFILE=ose.tar.gz
 PUBLIC_IP=`curl http://169.254.169.254/latest/meta-data/public-ipv4/`
@@ -40,7 +41,7 @@ hostname `hostname -s`.ec2.internal
 
 # install dependencies of Openshift + tcpdump and nano for troubleshooting
 dnf upgrade -y
-dnf install -y bash-completion bind-utils bridge-utils ethtool jq \
+dnf install -y bash-completion bind-utils bridge-utils e2fsprogs ethtool jq \
   iptables-services nano net-tools python tcpdump
 pip install --upgrade pip
 pip install awscli pyyaml
@@ -57,6 +58,21 @@ curl -sL ${OPENSHIFT_DOWNLOAD} -o /tmp/${TARFILE} \
     --directory bin \
   && rm /tmp/${TARFILE}
 
+# download the customized for Fedora awslogs-agent-setup.py
+# (see https://github.com/datawire/aws-toybox)
+#aws s3 cp --region=${REGION} \
+#  s3://dstresearch/backups/oso/awslogs-agent-setup.py /usr/local/bin
+#chmod +x /usr/local/bin/awslogs-agent-setup.py
+
+# download the journald to cloudwatch agent
+aws s3 cp --region=${REGION} \
+  s3://dstresearch/backups/oso/journald-cloudwatch-logs.tar.gz /tmp \
+  && tar xvfx /tmp/journald-cloudwatch-logs.tar.gz \
+      --strip-components=1 \
+      --directory /usr/local/bin \
+  && chmod +x /usr/local/bin/journald-cloudwatch-logs
+
+
 #-----------------------------------------------------------
 # Create initial-setup.sh
 #-----------------------------------------------------------
@@ -67,6 +83,7 @@ cat <<"EOF_SETUP" >bin/initial-setup.sh
 MASTER_IP=192.168.1.10
 DEFAULT_MASTER_DNS=dev.dstcorp.io
 DEFAULT_CLUSTER_UPLOAD=s3://dstresearch/cluster-configs
+ZONE=`curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone`
 REGION=`curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone | sed 's/[abcdefg]$//'`
 
 if [[ -e /tmp/launch-config ]]; then
@@ -88,10 +105,30 @@ echo "CLUSTER_UPLOAD:  ${CLUSTER_UPLOAD}"
 echo "REGION:  ${REGION}"
 echo "curling:  `curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone`"
 
+# setup the aws.conf file, per https://docs.openshift.org/latest/install_config/configuring_aws.html
+AWSCONFSUBDIR=/etc/aws
+AWSCONF=${AWSCONFSUBDIR}/aws.conf
+if [[ ! -f ${AWSCONF} ]]; then
+  mkdir -p ${AWSCONFSUBDIR}
+  echo "[Global]" >${AWSCONF}
+  echo "Zone = ${ZONE}" >>${AWSCONF}
+fi
+
+# setup the awslogs.conf file
+AWSLOGSCONF=/usr/local/etc/cloudwatch.conf
+if [[ ! -f ${AWSLOGSCONF} ]]; then
+  echo 'aws_region = "'${REGION}'"' >${AWSLOGSCONF}
+  echo 'log_group = "'${MASTER_DNS}'-openshift"' >>${AWSLOGSCONF}
+  echo 'log_stream = "journald-'`hostname -s`'"' >>${AWSLOGSCONF}
+  echo 'state_file = "/var/lib/journald-cloudwatch-logs/state"' >>${AWSLOGSCONF}
+fi
+mkdir -p /var/lib/journald-cloudwatch-logs
+
 # see if there's a suitably named config.tar.gz on s3
 aws s3 --region=${REGION} cp ${CLUSTER_UPLOAD}/${MASTER_DNS}/config.tar.gz /tmp \
-  && mkdir -p /etc/origin/openshift.local.config \
-  && tar xvfz /tmp/config.tar.gz --directory /etc/origin \
+  && mkdir -p /etc/origin \
+  && tar xvfz /tmp/config.tar.gz --strip-components=1 --directory /etc/origin \
+    openshift.local.config/master \
   && rm /tmp/config.tar.gz \
   && echo "downloaded config.tar.gz from s3" \
   && exit 0
@@ -107,19 +144,19 @@ aws s3 --region=${REGION} cp ${CLUSTER_UPLOAD}/${MASTER_DNS}/config.tar.gz /tmp 
 
 # customization's from the default
   # configure for AWS
-sed -i 's/apiServerArguments:/apiServerArguments: {cloud-config: \/etc\/aws\/aws.conf, cloud-provider: aws}/' \
-  openshift.local.config/master
-sed -i 's/controllerArguments:/controllerArguments: {cloud-config: \/etc\/aws\/aws.conf, cloud-provider: aws}/' \
-    openshift.local.config/master
+sed -i 's/apiServerArguments:.*/apiServerArguments: {cloud-config: [ \/etc\/aws\/aws.conf ], cloud-provider: [ aws ] }/' \
+  openshift.local.config/master/master-config.yaml
+sed -i 's/controllerArguments:.*/controllerArguments: {cloud-config: [ \/etc\/aws\/aws.conf ], cloud-provider: [ aws ] }/' \
+    openshift.local.config/master/master-config.yaml
   # configure the router to use the MASTER_DNS
-sed -i 's/subDomain:/controllerArguments: {cloud-config: \/etc\/aws\/aws.conf, cloud-provider: aws}/' \
-    openshift.local.config/master
+sed -i "s/subdomain:.*/subdomain: ${MASTER_DNS}/" \
+    openshift.local.config/master/master-config.yaml
 
 # now that the CA has been created (by the start master cmd),
 # we need to create the node config's and certificates
-# we'll create twenty of 'em for ip addresses 192.168.1.20 thru .39
+# we'll create 'em for the 192.168.1.0/24 subnet
 
-for i in `seq 20 39`; do
+for i in `seq 1 255`; do
   NODE=192-168-1-$i;
   NODEIP=192.168.1.$i;
   /opt/origin/bin/oadm create-node-config \
@@ -145,20 +182,9 @@ tar cvfz /tmp/config.tar.gz openshift.local.config \
   && echo "uploaded config.tar.gz to s3"
 
 # now setup the local machine's config as a master
-mkdir -p /etc/origin/openshift.local.config/master
-#mkdir -p /etc/origin/openshift.local.config/`hostname -s`
-cp -ra openshift.local.config/master/* /etc/origin/openshift.local.config/master
-#cp -ra openshift.local.config/`hostname -s` /etc/origin/openshift.local.config/`hostname -s`
+mkdir -p /etc/origin/master
+cp -ra openshift.local.config/master/* /etc/origin/master
 rm -rf openshift.local.config
-
-# setup the aws.conf file, per https://docs.openshift.org/latest/install_config/configuring_aws.html
-AWSCONFSUBDIR=/etc/aws
-AWSCONF=${AWSCONFSUBDIR}/aws.conf
-if [[ ! -f ${AWSCONF} ]]; then
-  mkdir -p ${AWSCONFSUBDIR}
-  echo "[Global]" >${AWSCONF}
-  echo "Zone = ${REGION}" >>${AWSCONF}
-fi
 
 EOF_SETUP
 chmod +x bin/initial-setup.sh
@@ -170,12 +196,16 @@ chmod +x bin/initial-setup.sh
 cat <<"EOF_RC_LOCAL" >bin/launch-master.sh
 #! /bin/bash
 
+# until this is launched via systemd, log via logger to journald
+exec 1> >(logger -t openshift-master) 2>&1
+
 MASTER_IP=192.168.1.10
 DEFAULT_MASTER_DNS=dev.dstcorp.io
 DEFAULT_CLUSTER_UPLOAD=s3://dstresearch/cluster-configs
+DEFAULT_LOG_LEVEL=1
 REGION=`curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone | sed 's/[abcdefg]$//'`
 
-MASTER_CONFIG=/etc/origin/openshift.local.config/master/master-config.yaml
+MASTER_CONFIG=/etc/origin/master/master-config.yaml
 OSO_BIN=/opt/origin/bin
 
 # hmmmm, need to set the hostname to something the AWS DNS server knows
@@ -193,6 +223,10 @@ if [[ -z "${CLUSTER_UPLOAD}" ]]; then
   CLUSTER_UPLOAD=${DEFAULT_CLUSTER_UPLOAD}
 fi
 
+if [[ -z "${LOG_LEVEL}" ]]; then
+  LOG_LEVEL=${DEFAULT_LOG_LEVEL}
+fi
+
 # debug:  print current VARS for launch-master.sh
 echo "current VARS for launch-master.sh"
 echo "MASTER_DNS:  ${MASTER_DNS}"
@@ -207,9 +241,11 @@ fi
 
 # launch openshift
 ${OSO_BIN}/openshift start master \
-  --loglevel 5 \
-  --config=${MASTER_CONFIG} \
-    >>/var/log/openshift-master.log 2>>/var/log/openshift-master.log &
+  --loglevel ${LOG_LEVEL} \
+  --config=${MASTER_CONFIG} &
+
+# launch the AWS Cloudwatch logging agent
+/usr/local/bin/journald-cloudwatch-logs /usr/local/etc/cloudwatch.conf &
 
 EOF_RC_LOCAL
 chmod +x bin/launch-master.sh

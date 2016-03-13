@@ -23,28 +23,34 @@ bake-master:
 launch-master:
 	aws cloudformation create-stack --stack-name oso-master \
 	 	--template-body file:///${PWD}/oso-master.json \
-		--parameters ParameterKey=InstanceType,ParameterValue=t2.medium \
+		--parameters ParameterKey=InstanceType,ParameterValue=m4.large \
 			ParameterKey=KeyName,ParameterValue=apache-test
-	echo "run 'sudo /opt/origin/bin/oadm registry --config=/etc/origin/openshift.local.config/master/admin.kubeconfig --credentials=/etc/origin/openshift.local.config/master/openshift-registry.kubeconfig'"
-	echo "run 'oc new-app library/java:jdk' on the Master."
+	echo "run 'sudo /opt/origin/bin/oadm registry --config=/etc/origin/master/admin.kubeconfig --credentials=/etc/origin/master/openshift-registry.kubeconfig'"
 
 launch-node0:
 	aws cloudformation create-stack --stack-name oso-node0 \
 	 	--template-body file:///${PWD}/oso-minion.json \
 		--parameters ParameterKey=IPAddress,ParameterValue=192.168.1.20 \
 			ParameterKey=NodeName,ParameterValue=node0 \
-			ParameterKey=InstanceType,ParameterValue=t2.large
+			ParameterKey=InstanceType,ParameterValue=m4.xlarge
 
 launch-node1:
 	aws cloudformation create-stack --stack-name oso-node1 \
 	 	--template-body file:///${PWD}/oso-minion.json \
 		--parameters ParameterKey=IPAddress,ParameterValue=192.168.1.21 \
 			ParameterKey=NodeName,ParameterValue=node1 \
-			ParameterKey=InstanceType,ParameterValue=t2.large
+			ParameterKey=InstanceType,ParameterValue=m4.xlarge
 
 launch-node2:
 	aws cloudformation create-stack --stack-name oso-node2 \
 	 	--template-body file:///${PWD}/oso-minion.json \
 		--parameters ParameterKey=IPAddress,ParameterValue=192.168.1.22 \
 			ParameterKey=NodeName,ParameterValue=node2 \
+			ParameterKey=InstanceType,ParameterValue=t2.large
+
+launch-node3:
+	aws cloudformation create-stack --stack-name oso-node3 \
+	 	--template-body file:///${PWD}/oso-minion.json \
+		--parameters ParameterKey=IPAddress,ParameterValue=192.168.1.23 \
+			ParameterKey=NodeName,ParameterValue=node3 \
 			ParameterKey=InstanceType,ParameterValue=t2.large

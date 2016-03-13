@@ -110,7 +110,7 @@
       "Properties" : {
         "AvailabilityZone" : "us-east-1e",
         "IamInstanceProfile" : "oso",
-        "ImageId" : "ami-a2d6eec8",
+        "ImageId" : "ami-5a737530",
         "InstanceType" : { "Ref" : "InstanceType" },
         "KeyName" : { "Ref" : "KeyName" },
         "Tags" : [ {"Key" : "Application", "Value" : { "Ref" : "AWS::StackId"} },
@@ -129,6 +129,7 @@
              "cat <<\"EOF\" >/tmp/launch-config",
              "#MASTER_DNS=`curl -s http://169.254.169.254/latest/meta-data/public-ipv4`",
              "MASTER_DNS=dev.dstcorp.io",
+             "LOG_LEVEL=1",
              "EOF",
              "# launch the Openshift master",
              "/opt/origin/bin/launch-master.sh"
