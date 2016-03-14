@@ -110,7 +110,7 @@
       "Properties" : {
         "AvailabilityZone" : "us-east-1e",
         "IamInstanceProfile" : "oso",
-        "ImageId" : "ami-5a737530",
+        "ImageId" : "ami-d1f8febb",
         "InstanceType" : { "Ref" : "InstanceType" },
         "KeyName" : { "Ref" : "KeyName" },
         "Tags" : [ {"Key" : "Application", "Value" : { "Ref" : "AWS::StackId"} },

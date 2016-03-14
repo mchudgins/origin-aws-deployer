@@ -166,8 +166,8 @@ for i in `seq 1 255`; do
     --network-plugin=redhat/openshift-ovs-multitenant \
     --master=https://${MASTER_IP}:8443;
 
-  # tweak the mtu settings.  AWS supports an mtu of 9000
-  sed -i 's/mtu: *1450/mtu: 8950/' openshift.local.config/ip-${NODE}/node-config.yaml
+  # tweak the mtu settings.  AWS supports an mtu of 9001
+#  sed -i 's/mtu: *1450/mtu: 8951/' openshift.local.config/ip-${NODE}/node-config.yaml
 
   # set the kubelet arg's
   echo -e "kubeletArguments:\n  cloud-config:\n  - /etc/aws/aws.conf\n  cloud-provider:\n  - aws" \
