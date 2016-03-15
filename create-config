@@ -1,0 +1,76 @@
+#! /bin/bash
+
+DEFAULT_OPENSHIFT_DOWNLOAD=https://s3.amazonaws.com/dstresearch/cluster-configs/v1.1.3-570/openshift-origin-server-v1.1.3-570-g8f31847-8f31847-linux-64bit.tar.gz
+
+OPENSHIFT=bin/openshift
+OADM=bin/oadm
+MASTER_IP=192.168.1.10
+MASTER_DNS=dev.dstcorp.io
+
+if [[ -z "${OPENSHIFT_DOWNLOAD}" ]]; then
+  OPENSHIFT_DOWNLOAD=${DEFAULT_OPENSHIFT_DOWNLOAD}
+fi
+
+TMPDIR=`mktemp -d`
+cd ${TMPDIR}
+mkdir bin
+
+if [[ ! -z "${SKIP_DOWNLOAD}" ]]; then
+  echo "skipping download and using /tmp/openshift-origin-server-v1.1.3-570-g8f31847-8f31847-linux-64bit.tar.gz"
+  tar xvfz /tmp/openshift-origin-server-v1.1.3-570-g8f31847-8f31847-linux-64bit.tar.gz \
+    --strip-components=1 \
+      --directory bin
+else
+  echo downloading ${OPENSHIFT_DOWNLOAD}
+  curl -sL ${OPENSHIFT_DOWNLOAD} -o oso.tar.gz \
+    && tar xvfz oso.tar.gz --strip-components=1 \
+      --directory bin \
+    && rm oso.tar.gz
+fi
+
+echo creating master configuration
+${OPENSHIFT} start master \
+  --listen=https://${MASTER_IP}:8443 \
+  --master=https://${MASTER_IP}:8443 \
+  --public-master=https://${MASTER_DNS}:8443 \
+  --network-plugin=redhat/openshift-ovs-multitenant \
+  --write-config=openshift.local.config/master
+
+# customization's from the default
+  # configure for AWS
+sed -i 's/apiServerArguments:.*/apiServerArguments: {cloud-config: [ \/etc\/aws\/aws.conf ], cloud-provider: [ aws ] }/' \
+  openshift.local.config/master/master-config.yaml
+sed -i 's/controllerArguments:.*/controllerArguments: {cloud-config: [ \/etc\/aws\/aws.conf ], cloud-provider: [ aws ] }/' \
+    openshift.local.config/master/master-config.yaml
+  # configure the router to use the MASTER_DNS
+sed -i "s/subdomain:.*/subdomain: ${MASTER_DNS}/" \
+    openshift.local.config/master/master-config.yaml
+
+# now that the CA has been created (by the start master cmd),
+# we need to create the node config's and certificates
+# we'll create 'em for the 192.168.1.0/24 subnet
+
+for i in `seq 20 24`; do
+  NODE=192-168-1-$i;
+  NODEIP=192.168.1.$i;
+  echo creating configuration for node ip-${NODE}
+  ${OADM} create-node-config \
+    --node-dir=openshift.local.config/ip-${NODE} \
+    --node=ip-${NODE}.ec2.internal \
+    --hostnames=ip-${NODE}.ec2.internal,${NODEIP} \
+    --network-plugin=redhat/openshift-ovs-multitenant \
+    --master=https://${MASTER_IP}:8443;
+
+  # tweak the mtu settings.  AWS supports an mtu of 9001
+  sed -i 's/mtu: *1450/mtu: 8951/' openshift.local.config/ip-${NODE}/node-config.yaml
+
+  # set the kubelet arg's
+  echo -e "kubeletArguments:\n  cloud-config:\n  - /etc/aws/aws.conf\n  cloud-provider:\n  - aws" \
+    >> openshift.local.config/ip-${NODE}/node-config.yaml
+done
+
+echo tar\'ing up the result into /tmp/config.tar.gz
+tar cvfz /tmp/config.tar.gz openshift.local.config
+
+cd -
+#rm -rf ${TMPDIR}

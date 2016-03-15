@@ -1,4 +1,9 @@
 #! /bin/bash
+#
+# run this script on the master.  At least one node must be up when
+# this script is run.
+#
+
 alias oc='sudo /opt/origin/bin/oc --config=/etc/origin/master/admin.kubeconfig'
 
 cat <<__EOF__ >registry-secret.yaml
