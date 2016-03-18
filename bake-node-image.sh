@@ -39,6 +39,10 @@ echo "Using ${OPENSHIFT_DOWNLOAD} as the source for Openshift Origin, v${RELEASE
 # hmmmm, need to set the hostname to something the AWS DNS server knows
 hostname `hostname -s`.ec2.internal
 
+# change the journald options to have only one log file
+# rather than one per user
+echo "SplitMode=none" >>/etc/systemd/journald.conf
+
 # install dependencies of Openshift + tcpdump and nano for troubleshooting
 # N.B. do not install 'socat' on prod nodes as it allows 'oc port-forward'
 dnf upgrade -y

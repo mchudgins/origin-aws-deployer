@@ -47,7 +47,11 @@ pip install --upgrade pip
 pip install awscli pyyaml
 dnf clean all
 
-sudo systemctl enable rc-local.service
+systemctl enable rc-local.service
+
+# change the journald options to have only one log file
+# rather than one per user
+echo "SplitMode=none" >>/etc/systemd/journald.conf
 
 # download & setup the openshift runtimes
 mkdir -p /opt/origin
