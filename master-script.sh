@@ -5,6 +5,7 @@
 #
 
 alias oc='sudo /opt/origin/bin/oc --config=/etc/origin/master/admin.kubeconfig'
+#aws s3 ls s3://dstresearch/cluster-configs/dev.dstcorp.io/ | awk '{ if ( $4 == "htpasswd" ) { print $1 " " $2 } }'
 
 cat <<__EOF__ >registry-secret.yaml
 apiVersion: v1
