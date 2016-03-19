@@ -11,6 +11,7 @@ if [[ -z "${OPENSHIFT_DOWNLOAD}" ]]; then
   OPENSHIFT_DOWNLOAD=${DEFAULT_OPENSHIFT_DOWNLOAD}
 fi
 
+BINDIR=`pwd`
 TMPDIR=`mktemp -d`
 cd ${TMPDIR}
 mkdir bin
@@ -37,20 +38,25 @@ ${OPENSHIFT} start master \
   --write-config=openshift.local.config/master
 
 # customization's from the default
-  # configure for AWS
-sed -i 's/apiServerArguments:.*/apiServerArguments: {cloud-config: [ \/etc\/aws\/aws.conf ], cloud-provider: [ aws ] }/' \
-  openshift.local.config/master/master-config.yaml
-sed -i 's/controllerArguments:.*/controllerArguments: {cloud-config: [ \/etc\/aws\/aws.conf ], cloud-provider: [ aws ] }/' \
-    openshift.local.config/master/master-config.yaml
-  # configure the router to use the MASTER_DNS
-sed -i "s/subdomain:.*/subdomain: ${MASTER_DNS}/" \
-    openshift.local.config/master/master-config.yaml
+#  # configure for AWS
+#sed -i 's/apiServerArguments:.*/apiServerArguments: {cloud-config: [ \/etc\/aws\/aws.conf ], cloud-provider: [ aws ] }/' \
+#  openshift.local.config/master/master-config.yaml
+#sed -i 's/controllerArguments:.*/controllerArguments: {cloud-config: [ \/etc\/aws\/aws.conf ], cloud-provider: [ aws ] }/' \
+#    openshift.local.config/master/master-config.yaml
+#  # configure the router to use the MASTER_DNS
+#sed -i "s/subdomain:.*/subdomain: ${MASTER_DNS}/" \
+#    openshift.local.config/master/master-config.yaml
+${BINDIR}/master-config.py openshift.local.config/master/master-config.yaml \
+  ${MASTER_DNS}
+
+  # grrr, pyyaml puts ticks around 'true' and openshfit doesn't want that.
+  sed -i "s/'true'/true/g" openshift.local.config/master/master-config.yaml
 
 # now that the CA has been created (by the start master cmd),
 # we need to create the node config's and certificates
 # we'll create 'em for the 192.168.1.0/24 subnet
 
-for i in `seq 20 24`; do
+for i in `seq 20 30`; do
   NODE=192-168-1-$i;
   NODEIP=192.168.1.$i;
   echo creating configuration for node ip-${NODE}

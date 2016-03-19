@@ -128,6 +128,11 @@ if [[ ! -f ${AWSLOGSCONF} ]]; then
 fi
 mkdir -p /var/lib/journald-cloudwatch-logs
 
+# setup htpasswd
+mkdir -p /etc/origin \
+  && touch /etc/origin/htpasswd \
+  && aws s3 --region=${REGION} cp ${CLUSTER_UPLOAD}/${MASTER_DNS}/htpasswd /etc/origin/htpasswd
+
 # see if there's a suitably named config.tar.gz on s3
 aws s3 --region=${REGION} cp ${CLUSTER_UPLOAD}/${MASTER_DNS}/config.tar.gz /tmp \
   && mkdir -p /etc/origin \
