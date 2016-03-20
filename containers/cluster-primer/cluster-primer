@@ -26,19 +26,25 @@ aws s3 cp s3://dstresearch/cluster-configs/${CLUSTER}/config.tar.gz . \
 
 # TODO:  use a persistent/EBS volume for the registry (via a pv claim)
 # see  https://docs.openshift.org/latest/install_config/install/docker_registry.html
-${OADM} registry --credentials=master/openshift-registry.kubeconfig
+${OADM} registry --credentials=master/openshift-registry.kubeconfig --dry-run
+if [[ $? -eq 1 ]]; then
+  ${OADM} registry --credentials=master/openshift-registry.kubeconfig
+fi
 
 # create a router
 
 # TODO: make this an HA router
-echo \
-    '{"kind":"ServiceAccount","apiVersion":"v1","metadata":{"name":"router"}}' \
-    | ${OC} create -f -
-${OADM} policy add-scc-to-user privileged router
-${OADM} policy add-scc-to-user hostnetwork -z router
-${OADM} router router --replicas=1 \
-    --credentials=${ROUTER_KUBECONFIG:-"$KUBECONFIG"} \
-    --service-account=router
+${OADM} router --dry-run
+if [[ $? -eq 1 ]]; then
+  echo \
+      '{"kind":"ServiceAccount","apiVersion":"v1","metadata":{"name":"router"}}' \
+      | ${OC} create -f -
+  ${OADM} policy add-scc-to-user privileged router
+  ${OADM} policy add-scc-to-user hostnetwork -z router
+  ${OADM} router router --replicas=1 \
+      --credentials=${ROUTER_KUBECONFIG:-"$KUBECONFIG"} \
+      --service-account=router
+fi
 
 # finally, sleep some amount of time waiting for the registry to come up
 # then create the default image streams
@@ -47,7 +53,7 @@ curl -L ${CENTOS_IS} -o image-streams-centos7.json
 
 # wait for a pod named 'docker-registry-1*' to have state of 'Running'
 registryStatus=`${OC} get pods | grep 'docker-registry-1' | awk '{ print $3 }'`
-while [[ ${registryStatus != "Running" } ]]; do
+while [[ ${registryStatus,,} != "running" ]]; do
   sleep 10
   registryStatus=`${OC} get pods | grep 'docker-registry-1' | awk '{ print $3 }'`
 done
@@ -55,7 +61,8 @@ done
 # now create various image streams
 ${OC} create -f image-streams-centos7.json -n openshift
 
-cat <<"EOF" > debian-is.yaml
+(
+cat <<"EOF"
 kind: "ImageStream"
 apiVersion: "v1"
 metadata:
@@ -63,9 +70,10 @@ metadata:
 spec:
   dockerImageRepository: "library/debian"
 EOF
-${OC} create -f debian-is.yaml -n openshift
+) | ${OC} create -f - -n openshift
 
-cat <<"EOF" > java-is.yaml
+(
+cat <<"EOF"
 kind: "ImageStream"
 apiVersion: "v1"
 metadata:
@@ -73,4 +81,15 @@ metadata:
 spec:
   dockerImageRepository: "library/java"
 EOF
-${OC} create -f java-is.yaml -n openshift
+) | ${OC} create -f - -n openshift
+
+#
+# create a project for the 'golden' builds.
+# permit anyone to pull images from it.
+#
+${OC} new-project golden \
+  --description='Golden DST Builds' \
+  --display-name='DST Builds'
+${OC} project default
+${OC} policy add-role-to-group system:image-puller system:serviceaccounts \
+  --namespace=golden
