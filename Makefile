@@ -1,7 +1,7 @@
 #
 # Makefile for testing Openshift Origin on AWS
 
-all: node-up.tar.gz
+all: node-up.tar.gz container
 
 node-sdn-scripts.tar.gz: openshift-sdn-ovs openshift-sdn-docker-setup.sh
 	tar cvfz $@ $^
@@ -54,3 +54,7 @@ launch-node3:
 		--parameters ParameterKey=IPAddress,ParameterValue=192.168.1.23 \
 			ParameterKey=NodeName,ParameterValue=node3 \
 			ParameterKey=InstanceType,ParameterValue=t2.large
+
+container:
+	sudo docker build -t registry.dstresearch.com/cluster-primer containers/cluster-primer
+	sudo docker push registry.dstresearch.com/cluster-primer
