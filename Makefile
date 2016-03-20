@@ -24,8 +24,8 @@ launch-master:
 	aws cloudformation create-stack --stack-name oso-master \
 	 	--template-body file:///${PWD}/oso-master.json \
 		--parameters ParameterKey=InstanceType,ParameterValue=m4.large \
-			ParameterKey=KeyName,ParameterValue=apache-test
-	echo "run 'sudo /opt/origin/bin/oadm registry --config=/etc/origin/master/admin.kubeconfig --credentials=/etc/origin/master/openshift-registry.kubeconfig'"
+			ParameterKey=KeyName,ParameterValue=apache-test \
+			ParameterKey=ClusterName,ParameterValue=dev.dstcorp.io
 
 launch-node0:
 	aws cloudformation create-stack --stack-name oso-node0 \
