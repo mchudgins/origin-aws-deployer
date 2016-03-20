@@ -1,0 +1,76 @@
+#! /bin/bash
+KUBECONFIG=master/admin.kubeconfig
+OADM="bin/oadm --config=$KUBECONFIG"
+OC="bin/oc --config=$KUBECONFIG"
+CENTOS_IS="https://raw.githubusercontent.com/openshift/origin/master/examples/image-streams/image-streams-centos7.json"
+
+TMPDIR=`mktemp -d`
+cd ${TMPDIR}
+
+# download the Openshift runtimes
+mkdir bin
+curl -sL ${OPENSHIFT_DOWNLOAD} -o oso-runtimes.tar.gz \
+	&& tar xvfz oso-runtimes.tar.gz --strip-components=1 \
+		--directory bin \
+	&& rm oso-runtimes.tar.gz
+
+# download the cluster certs and grab the master's info
+mkdir master
+aws s3 cp s3://dstresearch/cluster-configs/${CLUSTER}/config.tar.gz . \
+	&& tar xfz config.tar.gz openshift.local.config/master \
+		--strip-components=1 \
+		--directory master \
+	&& rm config.tar.gz
+
+# create a registry
+
+# TODO:  use a persistent/EBS volume for the registry (via a pv claim)
+# see  https://docs.openshift.org/latest/install_config/install/docker_registry.html
+${OADM} registry --credentials=master/openshift-registry.kubeconfig
+
+# create a router
+
+# TODO: make this an HA router
+echo \
+    '{"kind":"ServiceAccount","apiVersion":"v1","metadata":{"name":"router"}}' \
+    | ${OC} create -f -
+${OADM} policy add-scc-to-user privileged router
+${OADM} policy add-scc-to-user hostnetwork -z router
+${OADM} router router --replicas=1 \
+    --credentials=${ROUTER_KUBECONFIG:-"$KUBECONFIG"} \
+    --service-account=router
+
+# finally, sleep some amount of time waiting for the registry to come up
+# then create the default image streams
+
+curl -L ${CENTOS_IS} -o image-streams-centos7.json
+
+# wait for a pod named 'docker-registry-1*' to have state of 'Running'
+registryStatus=`${OC} get pods | grep 'docker-registry-1' | awk '{ print $3 }'`
+while [[ ${registryStatus != "Running" } ]]; do
+  sleep 10
+  registryStatus=`${OC} get pods | grep 'docker-registry-1' | awk '{ print $3 }'`
+done
+
+# now create various image streams
+${OC} create -f image-streams-centos7.json -n openshift
+
+cat <<"EOF" > debian-is.yaml
+kind: "ImageStream"
+apiVersion: "v1"
+metadata:
+  name: "debian"
+spec:
+  dockerImageRepository: "library/debian"
+EOF
+${OC} create -f debian-is.yaml -n openshift
+
+cat <<"EOF" > java-is.yaml
+kind: "ImageStream"
+apiVersion: "v1"
+metadata:
+  name: "java"
+spec:
+  dockerImageRepository: "library/java"
+EOF
+${OC} create -f java-is.yaml -n openshift
