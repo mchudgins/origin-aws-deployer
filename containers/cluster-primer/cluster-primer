@@ -87,6 +87,8 @@ EOF
 # create a project for the 'golden' builds.
 # permit anyone to pull images from it.
 #
+# see https://docs.openshift.com/enterprise/3.1/dev_guide/image_pull_secrets.html#allowing-pods-to-reference-images-across-projects
+#
 ${OC} new-project golden \
   --description='Golden DST Builds' \
   --display-name='DST Builds'
