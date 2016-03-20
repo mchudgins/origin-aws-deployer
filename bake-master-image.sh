@@ -1,5 +1,3 @@
-
-
 #! /bin/bash
 
 # prepare to launch an ec2 instance in AWS
