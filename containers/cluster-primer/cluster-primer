@@ -93,3 +93,5 @@ ${OC} new-project golden \
 ${OC} project default
 ${OC} policy add-role-to-group system:image-puller system:serviceaccounts \
   --namespace=golden
+${OC} policy add-role-to-group view system:serviceaccounts \
+    --namespace=golden
