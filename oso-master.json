@@ -121,7 +121,7 @@
         "KeyName" : { "Ref" : "KeyName" },
         "Tags" : [ {"Key" : "Application", "Value" : { "Ref" : "AWS::StackId"} },
           {"Key" : "Name", "Value" : "master0" },
-          {"Key" : "Cluster", "Value" : { "Ref" : "ClusterName" } } ]
+          {"Key" : "Cluster", "Value" : { "Ref" : "ClusterName" } } ],
         "NetworkInterfaces" : [{
           "GroupSet"                 : [ "sg-3f835347" ],
           "AssociatePublicIpAddress" : "true",

@@ -1,0 +1,176 @@
+{
+   "kind": "List",
+   "apiVersion": "v1",
+   "metadata": {
+      "name": "config-server"
+   },
+     "items": [
+        {
+           "kind": "ImageStream",
+           "apiVersion": "v1",
+           "metadata": {
+              "name": "configserver"
+           },
+           "spec": {
+              "dockerImageRepository": "",
+              "tags": [
+                 {
+                    "name": "latest",
+                    "from" : {
+                        "kind" : "ImageStreamTag",
+                        "namespace" : "golden",
+                        "name" : "configserver:latest"
+                    }
+                 }
+              ]
+           }
+        },
+      {
+         "kind": "Template",
+         "apiVersion": "v1",
+         "metadata": {
+            "name": "config-server",
+            "annotations": {
+               "description": "Spring Boot Config Server",
+               "iconClass": "icon-jboss",
+               "tags": "instant-app,springboot,maven,java"
+            }
+
+         },
+         "labels": {
+            "application": "springboot-config-server",
+            "createdBy": "template-springboot-config-server"
+         },
+         "parameters": [
+            {
+               "description": "The name for the application.",
+               "name": "APPLICATION_NAME",
+               "value": "config-server",
+               "displayName": "Application name",
+               "required": true
+            },
+            {
+               "description": "Custom hostname for service routes.  Leave blank for default hostname, e.g.: <application-name>.<project>.<default-domain-suffix>",
+               "name": "APPLICATION_HOSTNAME",
+               "displayName": "Application hostname"
+            },
+            {
+               "description": "Git Configuration Repository",
+               "name": "CONFIG_SETTINGS_REPO",
+               "value": "https://github.com/mchudgins/testRepo.git"
+            },
+            {
+               "description": "Application options. These options will be passed to the Spring Boot command line",
+               "name": "APP_OPTIONS"
+            }
+         ],
+         "objects": [
+            {
+               "kind": "DeploymentConfig",
+               "apiVersion": "v1",
+               "metadata": {
+                  "name": "${APPLICATION_NAME}"
+               },
+               "spec": {
+                  "strategy": {
+                     "type": "Rolling",
+                     "rollingParams": {
+                        "updatePeriodSeconds": 1,
+                        "intervalSeconds": 1,
+                        "timeoutSeconds": 600
+                     },
+                     "resources": {}
+                  },
+                  "triggers": [
+                     {
+                        "type": "ConfigChange"
+                     }
+                  ],
+                  "replicas": 1,
+                  "selector": {
+                     "deploymentconfig": "${APPLICATION_NAME}"
+                  },
+                  "template": {
+                     "metadata": {
+                        "labels": {
+                           "deploymentconfig": "${APPLICATION_NAME}"
+                        }
+                     },
+                     "spec": {
+                        "containers": [
+                           {
+                              "name": "${APPLICATION_NAME}",
+                              "image": "172.30.250.243:5000/golden/configserver:latest",
+                              "env" : [
+                                 {
+                                    "name" : "JAVA_OPTIONS",
+                                    "value": "-Dspring.cloud.config.server.git.uri=${CONFIG_SETTINGS_REPO}"
+                                 }
+                              ],
+                              "ports": [
+                                 {
+                                    "containerPort": 8888,
+                                    "protocol": "TCP"
+                                 }
+                              ],
+                              "livenessProbe": {
+                                 "tcpSocket": {
+                                    "port": 8888
+                                 },
+                                 "initialDelaySeconds": 30,
+                                 "timeoutSeconds": 1
+                              },
+                              "resources": {},
+                              "terminationMessagePath": "/dev/termination-log",
+                              "imagePullPolicy": "IfNotPresent",
+                              "securityContext": {
+                                 "capabilities": {},
+                                 "privileged": false
+                              }
+                           }
+                        ],
+                        "restartPolicy": "Always",
+                        "dnsPolicy": "ClusterFirst"
+                     }
+                  }
+               }
+            },
+            {
+               "kind": "Route",
+               "apiVersion": "v1",
+               "metadata": {
+                  "name": "${APPLICATION_NAME}"
+               },
+               "spec": {
+                  "host": "${APPLICATION_HOSTNAME}",
+                  "to": {
+                     "kind": "Service",
+                     "name": "${APPLICATION_NAME}"
+                  }
+               }
+            },
+            {
+               "kind": "Service",
+               "apiVersion": "v1",
+               "metadata": {
+                  "name": "${APPLICATION_NAME}"
+               },
+               "spec": {
+                  "ports": [
+                     {
+                        "name": "${APPLICATION_NAME}-http",
+                        "port": 80,
+                        "targetPort": 8888
+                     }
+                  ],
+                  "selector": {
+                     "deploymentconfig": "${APPLICATION_NAME}"
+                  },
+                  "type": "ClusterIP",
+                  "sessionAffinity": "None"
+               }
+            }
+         ]
+      }
+   ]
+}
