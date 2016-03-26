@@ -1,0 +1,75 @@
+{
+   "kind": "List",
+   "apiVersion": "v1",
+   "metadata": {
+      "name": "configserver"
+   },
+     "items": [
+{
+   "kind": "BuildConfig",
+   "apiVersion": "v1",
+   "metadata": {
+      "name": "configserver"
+   },
+   "spec": {
+      "triggers": [
+         {
+            "type": "GitHub",
+            "github": {
+               "secret": "12846"
+            }
+         },
+         {
+            "type": "Generic",
+            "generic": {
+               "secret": "12846"
+            }
+         },
+         {
+            "type": "ImageChange",
+            "imageChange": {}
+         }
+      ],
+      "source": {
+         "type": "Git",
+         "git": {
+            "uri": "https://github.com/mchudgins/configserver.git",
+            "ref": "master"
+         },
+         "contextDir": ""
+      },
+      "strategy": {
+         "type": "Source",
+         "sourceStrategy": {
+            "from": {
+               "kind": "ImageStreamTag",
+               "name": "springboot-sti:latest"
+            }
+         }
+      },
+      "output": {
+         "to": {
+            "kind": "ImageStreamTag",
+            "name": "configserver:latest"
+         }
+      },
+      "resources": {}
+   }
+},
+{
+   "kind": "ImageStream",
+   "apiVersion": "v1",
+   "metadata": {
+      "name": "configserver"
+   },
+   "spec": {
+      "dockerImageRepository": "",
+      "tags": [
+         {
+            "name": "latest"
+         }
+      ]
+   }
+}
+]
+}

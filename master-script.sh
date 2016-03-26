@@ -5,9 +5,11 @@
 #
 
 alias oc='sudo /opt/origin/bin/oc --config=/etc/origin/master/admin.kubeconfig'
+OC='sudo /opt/origin/bin/oc --config=/etc/origin/master/admin.kubeconfig'
 #aws s3 ls s3://dstresearch/cluster-configs/dev.dstcorp.io/ | awk '{ if ( $4 == "htpasswd" ) { print $1 " " $2 } }'
 
-cat <<__EOF__ >registry-secret.yaml
+(
+cat <<__EOF__
 apiVersion: v1
 kind: Secret
 metadata:
@@ -16,8 +18,10 @@ data:
   .dockercfg: ewoJInJlZ2lzdHJ5LmRzdHJlc2VhcmNoLmNvbSI6IHsKCQkiYXV0aCI6ICJaRzlqYTJWeU9sSmxjMlZoY21Ob1h6RT0iLAoJCSJlbWFpbCI6ICJhZ2VudEBkc3RyZXNlYXJjaC5jb20iCgl9Cn0K
 type: kubernetes.io/dockercfg
 __EOF__
+) | ${OC} create -f -
 
-cat <<__EOF__ >cluster-primer.yaml
+(
+cat <<__EOF__
 apiVersion: extensions/v1beta1
 kind: Job
 metadata:
@@ -44,3 +48,4 @@ spec:
       imagePullSecrets:
       - name: dstresearchkey
 __EOF__
+) | ${OC} create -f -

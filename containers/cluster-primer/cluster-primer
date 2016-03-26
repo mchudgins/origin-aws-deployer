@@ -46,20 +46,29 @@ if [[ $? -eq 1 ]]; then
       --service-account=router
 fi
 
+# TODO: associate the router's node's public IP address with
+# *.${CLUSTER} in the route53 DNS
+
 # finally, sleep some amount of time waiting for the registry to come up
 # then create the default image streams
 
 curl -L ${CENTOS_IS} -o image-streams-centos7.json
 
 # wait for a pod named 'docker-registry-1*' to have state of 'Running'
-registryStatus=`${OC} get pods | grep 'docker-registry-1' | awk '{ print $3 }'`
+# (can't be the 'docker-registry-1-deploy' pod)
+registryStatus=`${OC} get pods | grep 'docker-registry-1' \
+	| grep -v 'docker-registry-1-deploy' | awk '{ print $3 }'`
 while [[ ${registryStatus,,} != "running" ]]; do
   sleep 10
-  registryStatus=`${OC} get pods | grep 'docker-registry-1' | awk '{ print $3 }'`
+	registryStatus=`${OC} get pods | grep 'docker-registry-1' \
+		| grep -v 'docker-registry-1-deploy' | awk '{ print $3 }'`
 done
 
+# TODO: edit the docker-registry service so that it has the same
+# cluster/service IP address each time
+
 # now create various image streams
-${OC} create -f image-streams-centos7.json -n openshift
+${OC} create -f image-streams-centos7.json --namespace=openshift
 
 (
 cat <<"EOF"
@@ -70,7 +79,18 @@ metadata:
 spec:
   dockerImageRepository: "library/debian"
 EOF
-) | ${OC} create -f - -n openshift
+) | ${OC} create -f - --namespace=openshift
+
+(
+cat <<"EOF"
+kind: "ImageStream"
+apiVersion: "v1"
+metadata:
+  name: "centos"
+spec:
+  dockerImageRepository: "library/centos"
+EOF
+) | ${OC} create -f - --namespace=openshift
 
 (
 cat <<"EOF"
@@ -81,7 +101,7 @@ metadata:
 spec:
   dockerImageRepository: "library/java"
 EOF
-) | ${OC} create -f - -n openshift
+) | ${OC} create -f - --namespace=openshift
 
 #
 # create a project for the 'golden' builds.
@@ -95,5 +115,25 @@ ${OC} new-project golden \
 ${OC} project default
 ${OC} policy add-role-to-group system:image-puller system:serviceaccounts \
   --namespace=golden
+
+# need some images from registry.dstresearch.com, set up the docker pull secret
+
+cat <<__EOF__
+apiVersion: v1
+kind: Secret
+metadata:
+  name: dstresearchkey
+data:
+  .dockercfg: ewoJInJlZ2lzdHJ5LmRzdHJlc2VhcmNoLmNvbSI6IHsKCQkiYXV0aCI6ICJaRzlqYTJWeU9sSmxjMlZoY21Ob1h6RT0iLAoJCSJlbWFpbCI6ICJhZ2VudEBkc3RyZXNlYXJjaC5jb20iCgl9Cn0K
+type: kubernetes.io/dockercfg
+__EOF__
+) | ${OC} create -f -
+
 ${OC} policy add-role-to-group view system:serviceaccounts \
     --namespace=golden
+${OC} policy add-role-to-user admin mchudgins@dstsystems.com -n golden
+${OC} policy add-role-to-user admin mchudgins@dstsystems.com -n openshift
+${OC} policy add-role-to-user admin mchudgins@dstsystems.com -n openshift-infra
+${OC} policy add-role-to-user admin mchudgins@dstsystems.com -n default
+
+# TODO: add templates to openshift namespace

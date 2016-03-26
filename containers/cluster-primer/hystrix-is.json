@@ -1,0 +1,30 @@
+{
+   "kind": "List",
+   "apiVersion": "v1",
+   "metadata": {
+      "name": "hystrix"
+   },
+     "items": [
+{
+   "kind": "ImageStream",
+   "apiVersion": "v1",
+   "metadata": {
+      "name": "hystrix-dashboard"
+   },
+   "spec": {
+      "dockerImageRepository": "travix/hystrix-dashboard"
+   }
+},
+{
+   "kind": "ImageStream",
+   "apiVersion": "v1",
+   "metadata": {
+      "name": "hystrix-turbine"
+   },
+   "spec": {
+      "dockerImageRepository": "registry.dstresearch.com/library/turbine"
+   }
+}
+
+]
+}

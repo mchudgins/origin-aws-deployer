@@ -1,0 +1,195 @@
+{
+   "kind": "List",
+   "apiVersion": "v1",
+   "metadata": {
+      "name": "certs"
+   },
+     "items": [
+       {
+          "kind":"Service",
+          "apiVersion":"v1",
+          "metadata":{
+             "name":"mysql",
+             "labels":{
+                "name":"mysql",
+                "owner":"mch",
+                "app":"certs"
+             }
+          },
+          "spec":{
+             "ports": [
+               {
+                 "name":"mysql",
+                 "port":3306,
+                 "targetPort":3306,
+                 "protocol":"TCP"
+               }
+             ],
+             "selector":{
+                "name":"mysql",
+                "app":"certs"
+             }
+          }
+       },
+
+       {
+          "kind":"ReplicationController",
+          "apiVersion":"v1",
+          "metadata":{
+             "name":"mysql",
+             "labels":{
+                "name":"mysql",
+                "owner":"mch",
+                "app":"certs"
+             }
+          },
+          "spec":{
+             "replicas":1,
+             "selector":{
+                "name":"mysql",
+                "app":"certs"
+             },
+             "template":{
+                "metadata":{
+                   "labels":{
+                      "name":"mysql",
+                      "app":"certs"
+                   }
+                },
+                "spec":{
+                   "containers":[
+                      {
+                         "name":"mysql",
+                         "image":"centos/mysql-56-centos7",
+                         "env" : [
+                            {
+                               "name" : "MYSQL_USER",
+                               "value": "certs"
+                            },
+                            {
+                               "name" : "MYSQL_PASSWORD",
+                               "value": "certs"
+                            },
+                            {
+                               "name" : "MYSQL_DATABASE",
+                               "value": "certs"
+                            },
+                            {
+                               "name" : "MYSQL_ROOT_PASSWORD",
+                               "value": "password"
+                            }
+                         ],
+                         "ports":[
+                            {
+                               "containerPort":3306,
+                               "protocol":"TCP"
+                            }
+                         ]
+                      }
+                   ]
+                }
+             }
+          }
+       },
+
+       {
+          "kind":"Service",
+          "apiVersion":"v1",
+          "metadata":{
+             "name":"certs",
+             "labels":{
+                "name":"certs",
+                "owner":"mch",
+                "app":"certs"
+             }
+          },
+          "spec":{
+             "ports": [
+               {
+                 "name":"hystrix-metrix",
+                 "port":8081,
+                 "targetPort":8081,
+                 "protocol":"TCP"
+               },
+               {
+                 "name":"https",
+                 "port":8443,
+                 "targetPort":8443,
+                 "protocol":"TCP"
+               },
+               {
+                 "name":"https-open",
+                 "port":8444,
+                 "targetPort":8444,
+                 "protocol":"TCP"
+               }
+             ],
+             "selector":{
+                "name":"certs",
+                "app":"certs"
+             }
+          }
+       },
+
+       {
+          "kind":"ReplicationController",
+          "apiVersion":"v1",
+          "metadata":{
+             "name":"certs",
+             "labels":{
+                "name":"certs",
+                "owner":"mch",
+                "app":"certs"
+             }
+          },
+          "spec":{
+             "replicas":1,
+             "selector":{
+                "name":"certs",
+                "app":"certs"
+             },
+             "template":{
+                "metadata":{
+                   "labels":{
+                      "name":"certs",
+                      "app":"certs"
+                   }
+                },
+                "spec":{
+                   "containers":[
+                      {
+                         "name":"certs",
+                         "image":"registry.dstresearch.com/library/certs:latest",
+                         "env" : [
+                            {
+                               "name" : "DB",
+                               "value": "certs:certs@tcp(mysql:3306)/certs?parseTime=true"
+                            }
+                         ],
+                         "ports":[
+                            {
+                               "containerPort":8081,
+                               "protocol":"TCP"
+                            },
+                            {
+                               "containerPort":8443,
+                               "protocol":"TCP"
+                            },
+                            {
+                               "containerPort":8444,
+                               "protocol":"TCP"
+                            }
+                         ]
+                      }
+                   ],
+                  "imagePullSecrets": [
+                      { "name" : "dstresearchkey" }
+                   ]
+                }
+             }
+          }
+       }
+
+
+   ]
+}
