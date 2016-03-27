@@ -2,81 +2,9 @@
    "kind": "List",
    "apiVersion": "v1",
    "metadata": {
-      "name": "springboot-sti"
+      "name": "springboot-app"
    },
    "items": [
-     {
-        "kind": "BuildConfig",
-        "apiVersion": "v1",
-        "metadata": {
-           "name": "springboot-sti"
-        },
-        "spec": {
-           "triggers": [
-              {
-                 "type": "GitHub",
-                 "github": {
-                    "secret": "secret"
-                 }
-              },
-              {
-                 "type": "Generic",
-                 "generic": {
-                    "secret": "secret"
-                 }
-              },
-              {
-                 "type": "ImageChange",
-                 "imageChange": {}
-              }
-           ],
-           "source": {
-              "type": "Git",
-              "git": {
-                 "uri": "https://github.com/mchudgins/osev3-examples.git",
-                 "ref": "master"
-              },
-              "contextDir": "spring-boot/springboot-sti"
-           },
-           "strategy": {
-              "type": "Docker",
-              "dockerStrategy": {
-                 "from": {
-                    "kind": "ImageStreamTag",
-                    "namespace" : "openshift",
-                    "name": "centos:7"
-                 }
-              }
-           },
-           "output": {
-              "to": {
-                 "kind": "ImageStreamTag",
-                 "name": "springboot-sti:latest"
-              }
-           },
-           "resources": {}
-        }
-     },
-      {
-         "kind": "ImageStream",
-         "apiVersion": "v1",
-         "metadata": {
-            "name": "springboot-sti"
-         },
-         "spec": {
-            "dockerImageRepository": "",
-            "tags": [
-               {
-                  "name": "latest",
-                  "from" : {
-                      "kind" : "ImageStreamTag",
-                      "namespace" : "golden",
-                      "name" : "springboot-sti:latest"
-                  }
-               }
-            ]
-         }
-      },
       {
          "kind": "Template",
          "apiVersion": "v1",
@@ -90,14 +18,14 @@
 
          },
          "labels": {
-            "application": "springboot-helloworld-maven",
-            "createdBy": "template-springboot-helloworld-maven"
+            "application": "springboot-maven-builder",
+            "createdBy": "template-springboot-maven-builder"
          },
          "parameters": [
             {
                "description": "The name for the application.",
                "name": "APPLICATION_NAME",
-               "value": "helloworld-mvn",
+               "value": "helloworld",
                "displayName": "Application name",
                "required": true
             },
@@ -119,7 +47,7 @@
             {
                "description": "Git Directory",
                "name": "CONTEXT_DIR",
-               "value": "spring-boot/helloworld-springboot-maven"
+               "value": ""
             },
             {
                "description": "Application options. These options will be passed to the Spring Boot command line",
@@ -177,7 +105,7 @@
                      "sourceStrategy": {
                         "from": {
                            "kind": "ImageStreamTag",
-                           "namespace" : "golden"
+                           "namespace" : "golden",
                            "name": "springboot-sti:latest"
                         }
                      }
