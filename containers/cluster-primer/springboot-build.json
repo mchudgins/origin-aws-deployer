@@ -37,7 +37,7 @@
             {
                "description": "Git source URI for application",
                "name": "GIT_URI",
-               "value": "ssh://APKAJ7MNKYKYD5D4VFVQ@git-codecommit.us-east-1.amazonaws.com/v1/repos/testRepo"
+               "value": "ssh://APKAIVATHJWRG2Q5BSIA@git-codecommit.us-east-1.amazonaws.com/v1/repos/testRepo"
             },
             {
                "description": "Git branch/tag reference",
@@ -98,7 +98,8 @@
                         "uri": "${GIT_URI}",
                         "ref": "${GIT_REF}"
                      },
-                     "contextDir": "${CONTEXT_DIR}"
+                     "contextDir": "${CONTEXT_DIR}",
+                     "sourceSecret" : { "name" : "sshsecret" }
                   },
                   "strategy": {
                      "type": "Source",
