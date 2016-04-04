@@ -12,7 +12,7 @@
             "name": "springboot-maven-builder",
             "annotations": {
                "description": "Spring Boot applications built with maven",
-               "iconClass": "icon-jboss",
+               "iconClass": "icon-spring",
                "tags": "builder,springboot,maven,java"
             }
 
