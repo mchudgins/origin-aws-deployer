@@ -8,6 +8,10 @@ alias oc='sudo /opt/origin/bin/oc --config=/etc/origin/master/admin.kubeconfig'
 OC='sudo /opt/origin/bin/oc --config=/etc/origin/master/admin.kubeconfig'
 #aws s3 ls s3://dstresearch/cluster-configs/dev.dstcorp.io/ | awk '{ if ( $4 == "htpasswd" ) { print $1 " " $2 } }'
 
+# TODO add these lines to crontab
+#@hourly /opt/origin/bin/oadm --config=/etc/origin/master/admin.kubeconfig prune builds --confirm --keep-complete=2 --keep-failed=2 >/dev/null
+#@hourly /opt/origin/bin/oadm --config=/etc/origin/master/admin.kubeconfig prune deployments --confirm --keep-complete=2 --keep-failed=2 >/dev/null
+
 (
 cat <<__EOF__
 apiVersion: v1
