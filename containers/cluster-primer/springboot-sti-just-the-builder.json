@@ -1,0 +1,80 @@
+{
+   "kind": "List",
+   "apiVersion": "v1",
+   "metadata": {
+      "name": "springboot-sti"
+   },
+   "items": [
+     {
+        "kind": "BuildConfig",
+        "apiVersion": "v1",
+        "metadata": {
+           "name": "springboot-sti"
+        },
+        "spec": {
+           "triggers": [
+              {
+                 "type": "GitHub",
+                 "github": {
+                    "secret": "secret"
+                 }
+              },
+              {
+                 "type": "Generic",
+                 "generic": {
+                    "secret": "secret"
+                 }
+              },
+              {
+                 "type": "ImageChange",
+                 "imageChange": {}
+              }
+           ],
+           "source": {
+              "type": "Git",
+              "git": {
+                 "uri": "https://github.com/mchudgins/osev3-examples.git",
+                 "ref": "master"
+              },
+              "contextDir": "spring-boot/springboot-sti"
+           },
+           "strategy": {
+              "type": "Docker",
+              "dockerStrategy": {
+                 "from": {
+                    "kind": "ImageStreamTag",
+                    "namespace" : "openshift",
+                    "name": "centos:7"
+                 }
+              }
+           },
+           "output": {
+              "to": {
+                 "kind": "ImageStreamTag",
+                 "name": "springboot-sti:latest"
+              }
+           },
+           "resources": {}
+        }
+     },
+      {
+         "kind": "ImageStream",
+         "apiVersion": "v1",
+         "metadata": {
+            "name": "springboot-sti"
+         },
+         "spec": {
+            "dockerImageRepository": "",
+            "tags": [
+               {
+                  "name": "latest",
+                  "from" : {
+                      "kind" : "ImageStreamTag",
+                      "name" : "springboot-sti:latest"
+                  }
+               }
+            ]
+         }
+      }
+   ]
+}
