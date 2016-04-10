@@ -2,124 +2,35 @@
    "kind": "List",
    "apiVersion": "v1",
    "metadata": {
-      "name": "springboot-app"
+      "name": "artifactory"
    },
    "items": [
       {
          "kind": "Template",
          "apiVersion": "v1",
          "metadata": {
-            "name": "springboot-maven-builder",
+            "name": "artifactory",
             "annotations": {
-               "description": "Spring Boot applications built with maven",
-               "iconClass": "icon-spring",
-               "tags": "builder,springboot,maven,java"
+               "description": "repository for maven artifacts",
+               "iconClass": "icon-shadowman",
+               "tags": "instant-app,artifactory,maven,java"
             }
 
          },
          "labels": {
-            "application": "springboot-maven-builder",
-            "createdBy": "template-springboot-maven-builder"
+            "application": "artifactory",
+            "createdBy": "artifactory-template"
          },
          "parameters": [
             {
                "description": "The name for the application.",
                "name": "APPLICATION_NAME",
-               "value": "helloworld",
+               "value": "artifactory",
                "displayName": "Application name",
                "required": true
-            },
-            {
-               "description": "Custom hostname for service routes.  Leave blank for default hostname, e.g.: <application-name>.<project>.<default-domain-suffix>",
-               "name": "APPLICATION_HOSTNAME",
-               "displayName": "Application hostname"
-            },
-            {
-               "description": "Git source URI for application",
-               "name": "GIT_URI",
-               "value": "ssh://APKAIVATHJWRG2Q5BSIA@git-codecommit.us-east-1.amazonaws.com/v1/repos/testRepo"
-            },
-            {
-               "description": "Git branch/tag reference",
-               "name": "GIT_REF",
-               "value": "master"
-            },
-            {
-               "description": "Git Directory",
-               "name": "CONTEXT_DIR",
-               "value": ""
-            },
-            {
-               "description": "Application options. These options will be passed to the Spring Boot command line",
-               "name": "APP_OPTIONS"
-            },
-            {
-               "description": "Github trigger secret",
-               "name": "GITHUB_TRIGGER_SECRET",
-               "from": "[a-zA-Z0-9]{8}",
-               "generate": "expression"
-            },
-            {
-               "description": "Generic build trigger secret",
-               "name": "GENERIC_TRIGGER_SECRET",
-               "from": "[a-zA-Z0-9]{8}",
-               "generate": "expression"
             }
          ],
          "objects": [
-            {
-               "kind": "BuildConfig",
-               "apiVersion": "v1",
-               "metadata": {
-                  "name": "${APPLICATION_NAME}"
-               },
-               "spec": {
-                  "triggers": [
-                     {
-                        "type": "GitHub",
-                        "github": {
-                           "secret": "${GITHUB_TRIGGER_SECRET}"
-                        }
-                     },
-                     {
-                        "type": "Generic",
-                        "generic": {
-                           "secret": "${GENERIC_TRIGGER_SECRET}"
-                        }
-                     },
-                     {
-                        "type": "ImageChange",
-                        "imageChange": {}
-                     }
-                  ],
-                  "source": {
-                     "type": "Git",
-                     "git": {
-                        "uri": "${GIT_URI}",
-                        "ref": "${GIT_REF}"
-                     },
-                     "contextDir": "${CONTEXT_DIR}",
-                     "sourceSecret" : { "name" : "sshsecret" }
-                  },
-                  "strategy": {
-                     "type": "Source",
-                     "sourceStrategy": {
-                        "from": {
-                           "kind": "ImageStreamTag",
-                           "namespace" : "golden",
-                           "name": "springboot-sti:latest"
-                        }
-                     }
-                  },
-                  "output": {
-                     "to": {
-                        "kind": "ImageStreamTag",
-                        "name": "${APPLICATION_NAME}:latest"
-                     }
-                  },
-                  "resources": {}
-               }
-            },
             {
                "kind": "ImageStream",
                "apiVersion": "v1",
@@ -127,7 +38,7 @@
                   "name": "${APPLICATION_NAME}"
                },
                "spec": {
-                  "dockerImageRepository": "",
+                  "dockerImageRepository": "fkirill/artifactory",
                   "tags": [
                      {
                         "name": "latest"
@@ -190,6 +101,12 @@
                                     "protocol": "TCP"
                                  }
                               ],
+                              "volumeMounts" : [
+                                 {
+                                    "mountPath" : "/artifactory/data",
+                                    "name" : "data"
+                                 }
+                              ],
                               "livenessProbe": {
                                  "tcpSocket": {
                                     "port": 8080
@@ -206,23 +123,15 @@
                               }
                            }
                         ],
+                        "volumes" : [
+                           {
+                             "name" : "data",
+                             "persistentVolumeClaim" : { "claimName" : "${APPLICATION_NAME}" }
+                           }
+                        ],
                         "restartPolicy": "Always",
                         "dnsPolicy": "ClusterFirst"
                      }
-                  }
-               }
-            },
-            {
-               "kind": "Route",
-               "apiVersion": "v1",
-               "metadata": {
-                  "name": "${APPLICATION_NAME}"
-               },
-               "spec": {
-                  "host": "${APPLICATION_HOSTNAME}",
-                  "to": {
-                     "kind": "Service",
-                     "name": "${APPLICATION_NAME}"
                   }
                }
             },
@@ -236,7 +145,7 @@
                   "ports": [
                      {
                         "name": "${APPLICATION_NAME}-http",
-                        "port": 8080,
+                        "port": 80,
                         "targetPort": 8080
                      }
                   ],
