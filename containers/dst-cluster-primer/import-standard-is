@@ -132,47 +132,6 @@ sudo docker pull openshift/etcd-20-centos7
 sudo docker tag openshift/etcd-20-centos7 ${REPO}/etcd:2.0
 sudo docker push ${REPO}/etcd:2.0
 
-(
-cat <<"EOF"
-
-    {
-      "kind": "ImageStream",
-      "apiVersion": "v1",
-      "metadata": {
-        "name": "jenkins",
-        "creationTimestamp": null
-      },
-      "spec": {
-        "tags": [
-          {
-            "name": "latest",
-            "annotations": {
-              "description": "Provides a Jenkins server",
-              "iconClass": "icon-jenkins",
-              "tags": "jenkins"
-            },
-            "from": {
-              "kind": "ImageStreamTag",
-              "name": "1"
-            }
-          },
-          {
-            "name": "1",
-            "annotations": {
-              "description": "Provides a Jenkins server",
-              "iconClass": "icon-jenkins",
-              "tags": "jenkins",
-              "version": "1.x"
-            },
-            "from": {
-              "kind": "DockerImage",
-              "name": "openshift/jenkins-1-centos7:latest"
-            }
-          }
-        ]
-      }
-    }
-  ]
-}
-EOF
-) > /dev/null
+sudo docker pull centos:centos7
+sudo docker tag centos:centos7 ${REPO}/centos:7
+sudo docker push ${REPO}/centos:7
