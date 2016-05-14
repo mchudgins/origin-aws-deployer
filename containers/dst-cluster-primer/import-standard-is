@@ -1,0 +1,137 @@
+#! /bin/bash
+
+USER_TOKEN=$3
+USER_NAME=$2
+USER_EMAIL="agent@dstresearch.com"
+
+REGISTRY_DNS=$1
+
+#
+# eff'ing proxy.
+#
+# this script pulls down from hub.docker.com the designated images
+# and then pushes them to the openshift integrated registry.
+# To do so, the following must be true when this script is run:
+#
+# 1. run it on a node of the openshift cluster
+# 2. you have logged into openshift as a user who has push authority to the
+#    'openshift' namespace of the integrated registry
+# 3. The openshift image streams have already been defined
+#
+
+if [[ "${#}" -ne 3 ]]; then
+  echo "usage:  $0 <registry_dns> <user name> <user token>"
+  exit 1
+fi
+
+#REGISTRY=`host -4 ${REGISTRY_DNS} | awk '{print $4}'`
+#if [[ $? -ne 0 ]]; then
+#  echo "An error occurred retrieving ${1}'s IP address'"
+#  exit 1
+#fi
+#if [[ "${REGISTRY}" = "found:" ]]; then
+#  echo "An error occurred retrieving ${1}'s IP address'"
+#  exit 1
+#fi
+REGISTRY=${REGISTRY_DNS}
+
+
+#
+#sudo docker login -u ${USER_NAME}
+#  -e "${USER_EMAIL}"
+#  -p "${USER_TOKEN}" ${REGISTRY_DNS}:5000
+
+REPO="${REGISTRY}:5000/openshift"
+
+# now begin the laborious process of pull'ing and push'ing
+sudo docker pull openshift/ruby-20-centos7:latest
+sudo docker tag openshift/ruby-20-centos7:latest ${REPO}/ruby:latest
+sudo docker push ${REPO}/ruby:latest
+sudo docker tag openshift/ruby-20-centos7:latest ${REPO}/ruby:2.2
+sudo docker push ${REPO}/ruby:2.2
+sudo docker tag openshift/ruby-20-centos7:latest ${REPO}/ruby:2.0
+sudo docker push ${REPO}/ruby:2.0
+
+sudo docker pull openshift/nodejs-010-centos7
+sudo docker tag openshift/nodejs-010-centos7:latest ${REPO}/nodejs:latest
+sudo docker push ${REPO}/nodejs:latest
+sudo docker tag openshift/nodejs-010-centos7:latest ${REPO}/nodejs:0.10
+sudo docker push ${REPO}/nodejs:0.10
+
+sudo docker pull centos/perl-520-centos7:latest
+sudo docker tag centos/perl-520-centos7:latest ${REPO}/perl:latest
+sudo docker push ${REPO}/perl:latest
+sudo docker tag centos/perl-520-centos7:latest ${REPO}/perl:5.20
+sudo docker push ${REPO}/perl:5.20
+sudo docker pull openshift/perl-516-centos7:latest
+sudo docker tag openshift/perl-516-centos7:latest ${REPO}/perl:5.16
+sudo docker push ${REPO}/perl:5.16
+
+sudo docker pull centos/php-56-centos7:latest
+sudo docker tag centos/php-56-centos7:latest ${REPO}/php:latest
+sudo docker push ${REPO}/php:latest
+sudo docker tag centos/php-56-centos7:latest ${REPO}/php:5.6
+sudo docker push ${REPO}/php:5.6
+
+sudo docker pull openshift/php-55-centos7:latest
+sudo docker tag openshift/php-55-centos7:latest ${REPO}/php:5.5
+sudo docker push ${REPO}/php:5.5
+
+sudo docker pull centos/python-34-centos7:latest
+sudo docker tag centos/python-34-centos7:latest ${REPO}/python:latest
+sudo docker push ${REPO}/python:latest
+sudo docker tag centos/python-34-centos7:latest ${REPO}/python:3.4
+sudo docker push ${REPO}/python:3.4
+sudo docker pull openshift/python-33-centos7:latest
+sudo docker tag openshift/python-33-centos7:latest ${REPO}/python:3.3
+sudo docker push ${REPO}/python:3.3
+sudo docker pull centos/python-27-centos7:latest
+sudo docker tag centos/python-27-centos7:latest ${REPO}/python:2.7
+sudo docker push ${REPO}/python:2.7
+
+sudo docker pull openshift/wildfly-100-centos7:latest
+sudo docker tag openshift/wildfly-100-centos7:latest ${REPO}/wildfly:latest
+sudo docker push ${REPO}/wildfly:latest
+sudo docker tag openshift/wildfly-100-centos7:latest ${REPO}/wildfly:10.0
+sudo docker push ${REPO}/wildfly:10.0
+sudo docker pull openshift/wildfly-90-centos7:latest
+sudo docker tag openshift/wildfly-90-centos7:latest ${REPO}/wildfly:9.0
+sudo docker push ${REPO}/wildfly:9.0
+sudo docker pull openshift/wildfly-81-centos7:latest
+sudo docker tag openshift/wildfly-81-centos7:latest ${REPO}/wildfly:8.1
+sudo docker push ${REPO}/wildfly:8.1
+
+sudo docker pull openshift/mysql-55-centos7:latest
+sudo docker tag openshift/mysql-55-centos7:latest ${REPO}/mysql:5.5
+sudo docker push ${REPO}/mysql:5.5
+sudo docker pull centos/mysql-56-centos7:latest
+sudo docker tag centos/mysql-56-centos7:latest ${REPO}/mysql:5.6
+sudo docker push ${REPO}/mysql:5.6
+sudo docker tag centos/mysql-56-centos7:latest ${REPO}/mysql:latest
+sudo docker push ${REPO}/mysql:latest
+
+sudo docker pull openshift/postgresql-92-centos7:latest
+sudo docker tag openshift/postgresql-92-centos7:latest ${REPO}/postgresql:9.2
+sudo docker push ${REPO}/postgresql:9.2
+sudo docker pull centos/postgresql-94-centos7:latest
+sudo docker tag centos/postgresql-94-centos7:latest ${REPO}/postgresql:9.4
+sudo docker push ${REPO}/postgresql:9.4
+
+sudo docker pull openshift/mongodb-24-centos7
+sudo docker tag openshift/mongodb-24-centos7 ${REPO}/mongodb:2.4
+sudo docker push ${REPO}/mongodb:2.4
+sudo docker pull centos/mongodb-26-centos7
+sudo docker tag centos/mongodb-26-centos7 ${REPO}/mongodb:2.6
+sudo docker push ${REPO}/mongodb:2.6
+
+sudo docker pull openshift/jenkins-1-centos7:latest
+sudo docker tag openshift/jenkins-1-centos7:latest ${REPO}/jenkins:1
+sudo docker push ${REPO}/jenkins:1
+
+sudo docker pull openshift/etcd-20-centos7
+sudo docker tag openshift/etcd-20-centos7 ${REPO}/etcd:2.0
+sudo docker push ${REPO}/etcd:2.0
+
+sudo docker pull centos:centos7
+sudo docker tag centos:centos7 ${REPO}/centos:7
+sudo docker push ${REPO}/centos:7
