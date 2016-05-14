@@ -46,14 +46,14 @@ launch-node2:
 	 	--template-body file:///${PWD}/oso-minion.json \
 		--parameters ParameterKey=IPAddress,ParameterValue=192.168.1.22 \
 			ParameterKey=NodeName,ParameterValue=node2 \
-			ParameterKey=InstanceType,ParameterValue=t2.large
+			ParameterKey=InstanceType,ParameterValue=m4.xlarge
 
 launch-node3:
 	aws cloudformation create-stack --stack-name oso-node3 \
 	 	--template-body file:///${PWD}/oso-minion.json \
 		--parameters ParameterKey=IPAddress,ParameterValue=192.168.1.23 \
 			ParameterKey=NodeName,ParameterValue=node3 \
-			ParameterKey=InstanceType,ParameterValue=t2.large
+			ParameterKey=InstanceType,ParameterValue=m4.xlarge
 
 container:
 	sudo docker build -t registry.dstresearch.com/cluster-primer containers/cluster-primer

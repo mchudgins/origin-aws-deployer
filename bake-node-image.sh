@@ -4,8 +4,10 @@
 
 # prepare to launch an ec2 instance in AWS
 
+BASE_AMI=ami-e5de3188
+#BASE_AMI="ami-1648597c"
 #BASE_AMI="ami-1033037a"
-BASE_AMI="ami-1648597c"
+
 KEY_NAME="apache-test"
 SSHOPTS="-q -o ConnectTimeout=5 -o CheckHostIP=no -o StrictHostKeychecking=no -i ${HOME}/certs/${KEY_NAME}.pem"
 UPTIME_CMD="uptime -s"
@@ -18,8 +20,9 @@ BOOT_FILE=boot.sh
 cat <<"EOF" > ${BOOT_FILE}
 #! /bin/bash
 
+DEFAULT_OPENSHIFT_DOWNLOAD=https://github.com/openshift/origin/releases/download/v1.2.0-rc2/openshift-origin-server-v1.2.0-rc2-642f0af-linux-64bit.tar.gz
+#DEFAULT_OPENSHIFT_DOWNLOAD=https://github.com/openshift/origin/releases/download/v1.1.6/openshift-origin-server-v1.1.6-ef1caba-linux-64bit.tar.gz
 #DEFAULT_OPENSHIFT_DOWNLOAD=https://s3.amazonaws.com/dstresearch/cluster-configs/v1.1.3-570/openshift-origin-server-v1.1.3-570-g8f31847-8f31847-linux-64bit.tar.gz
-DEFAULT_OPENSHIFT_DOWNLOAD=https://github.com/openshift/origin/releases/download/v1.1.6/openshift-origin-server-v1.1.6-ef1caba-linux-64bit.tar.gz
 
 TARFILE=ose.tar.gz
 PUBLIC_IP=`curl http://169.254.169.254/latest/meta-data/public-ipv4/`
