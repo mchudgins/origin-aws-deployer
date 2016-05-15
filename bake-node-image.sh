@@ -1,5 +1,3 @@
-
-
 #! /bin/bash
 
 # prepare to launch an ec2 instance in AWS
@@ -58,6 +56,18 @@ dnf clean all
 
 # modify the docker startup OPTIONS
 sed -i "s/OPTIONS='/OPTIONS='--insecure-registry=172.30.0.0\/16 /g" /etc/sysconfig/docker
+
+# osdn plugin setup writes docker network options to
+# /run/openshift-sdn/docker-network, make this file to be exported
+# as part of docker service start.
+system_docker_path="/usr/lib/systemd/system/docker.service.d/"
+
+mkdir -p "${system_docker_path}"
+
+cat <<EOF_SDN >"${system_docker_path}/docker-sdn-ovs.conf"
+[Service]
+EnvironmentFile=-/run/openshift-sdn/docker-network
+EOF_SDN
 
 # enable the services the image will need on launch
 sudo systemctl enable rc-local.service

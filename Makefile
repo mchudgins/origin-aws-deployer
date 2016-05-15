@@ -32,21 +32,21 @@ launch-node0:
 	 	--template-body file:///${PWD}/oso-minion.json \
 		--parameters ParameterKey=IPAddress,ParameterValue=192.168.1.20 \
 			ParameterKey=NodeName,ParameterValue=node0 \
-			ParameterKey=InstanceType,ParameterValue=m4.xlarge
+			ParameterKey=InstanceType,ParameterValue=m4.large
 
 launch-node1:
 	aws cloudformation create-stack --stack-name oso-node1 \
 	 	--template-body file:///${PWD}/oso-minion.json \
 		--parameters ParameterKey=IPAddress,ParameterValue=192.168.1.21 \
 			ParameterKey=NodeName,ParameterValue=node1 \
-			ParameterKey=InstanceType,ParameterValue=m4.xlarge
+			ParameterKey=InstanceType,ParameterValue=m4.large
 
 launch-node2:
 	aws cloudformation create-stack --stack-name oso-node2 \
 	 	--template-body file:///${PWD}/oso-minion.json \
 		--parameters ParameterKey=IPAddress,ParameterValue=192.168.1.22 \
 			ParameterKey=NodeName,ParameterValue=node2 \
-			ParameterKey=InstanceType,ParameterValue=m4.xlarge
+			ParameterKey=InstanceType,ParameterValue=m4.large
 
 launch-node3:
 	aws cloudformation create-stack --stack-name oso-node3 \

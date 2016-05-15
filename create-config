@@ -17,8 +17,9 @@ cd ${TMPDIR}
 mkdir bin
 
 if [[ ! -z "${SKIP_DOWNLOAD}" ]]; then
-  echo "skipping download and using /tmp/openshift-origin-server-v1.1.3-570-g8f31847-8f31847-linux-64bit.tar.gz"
-  tar xvfz /tmp/openshift-origin-server-v1.1.3-570-g8f31847-8f31847-linux-64bit.tar.gz \
+  OSO_DOWNLOAD=/tmp/openshift-origin-server-v1.2.0-rc2-642f0af-linux-64bit.tar.gz
+  echo "skipping download and using ${OSO_DOWNLOAD}"
+  tar xvfz ${OSO_DOWNLOAD} \
     --strip-components=1 \
       --directory bin
 else
@@ -56,7 +57,7 @@ ${BINDIR}/master-config.py openshift.local.config/master/master-config.yaml \
 # we need to create the node config's and certificates
 # we'll create 'em for the 192.168.1.0/24 subnet
 
-for i in `seq 0 255`; do
+for i in `seq 0 30`; do
   NODE=192-168-1-$i;
   NODEIP=192.168.1.$i;
   echo creating configuration for node ip-${NODE}
@@ -68,7 +69,7 @@ for i in `seq 0 255`; do
     --master=https://${MASTER_IP}:8443;
 
   # tweak the mtu settings.  AWS supports an mtu of 9001
-  #sed -i 's/mtu: *1450/mtu: 8951/' openshift.local.config/ip-${NODE}/node-config.yaml
+  sed -i 's/mtu: *1450/mtu: 8951/' openshift.local.config/ip-${NODE}/node-config.yaml
 
   # set the kubelet arg's
   echo -e "kubeletArguments:\n  cloud-config:\n  - /etc/aws/aws.conf\n  cloud-provider:\n  - aws" \
