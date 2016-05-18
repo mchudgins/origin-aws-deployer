@@ -117,7 +117,7 @@ ${OC} policy add-role-to-group system:image-puller system:serviceaccounts \
   --namespace=golden
 
 # need some images from registry.dstresearch.com, set up the docker pull secret
-
+(
 cat <<__EOF__
 apiVersion: v1
 kind: Secret
@@ -137,3 +137,139 @@ ${OC} policy add-role-to-user admin mchudgins@dstsystems.com -n openshift-infra
 ${OC} policy add-role-to-user admin mchudgins@dstsystems.com -n default
 
 # TODO: add templates to openshift namespace
+
+# Launch the www server
+# note that the secret must have been previously deployed.
+(
+cat <<__EOF__
+{
+   "kind":"Service",
+   "apiVersion":"v1",
+   "metadata":{
+      "name":"httpd",
+      "labels":{
+         "name":"httpd",
+         "owner":"mch"
+      }
+   },
+   "spec":{
+      "type": "LoadBalancer",
+      "ports": [
+        {
+          "name":"http",
+          "port":80,
+          "targetPort":8080,
+          "protocol":"TCP"
+        },
+        {
+          "name":"https",
+          "port":443,
+          "targetPort":8443,
+          "protocol":"TCP"
+        }
+      ],
+      "selector":{
+         "name":"httpd"
+      }
+   }
+}
+__EOF__
+) | ${OC} create -f -
+
+(
+cat <<__EOF__
+{
+   "kind":"ReplicationController",
+   "apiVersion":"v1",
+   "metadata":{
+      "name":"httpd",
+      "labels":{
+         "name":"httpd",
+         "owner":"mch"
+      }
+   },
+   "spec":{
+      "replicas":1,
+      "selector":{
+         "name":"httpd"
+      },
+      "template":{
+         "metadata":{
+            "labels":{
+               "name":"httpd"
+            }
+         },
+         "spec":{
+            "volumes": [
+               {
+                  "name":"keys",
+                  "secret": { "secretName": "star.dstcorp.io-certs" }
+               },
+               {
+                  "name":"cache",
+                  "emptyDir":{}
+               }
+            ],
+            "containers":[
+               {
+                  "name":"httpd",
+                  "image":"registry.dstresearch.com/library/httpd-dstcorp-io:latest",
+                  "env" : [
+                     {
+                        "name" : "SITE_CONTENT",
+                        "value": "https://s3.amazonaws.com/dstresearch-public/www.dstcorp.io.tar.gz"
+                     }
+                  ],
+                  "ports":[
+                     {
+                        "containerPort":8080,
+                        "protocol":"TCP"
+                     },
+                     {
+                        "containerPort":8443,
+                        "protocol":"TCP"
+                     }
+                  ],
+                  "volumeMounts": [
+                     {
+                        "name": "keys",
+                        "readOnly": true,
+                        "mountPath": "/etc/apache2/keys"
+                     },
+                     {
+                        "name": "cache",
+                        "readOnly": false,
+                        "mountPath": "/var/cache/apache2"
+                     }
+                  ]
+               },
+               {
+                  "name":"htcacheclean",
+                  "image":"registry.dstresearch.com/library/httpd-dstcorp-io:latest",
+                  "command": [ "/entrypoint.sh", "monitor" ],
+                  "env" : [
+                     {
+                        "name" : "SITE_CONTENT",
+                        "value": "https://s3.amazonaws.com/dstresearch-public/www.dstcorp.io.tar.gz"
+                     }
+                  ],
+                  "volumeMounts": [
+                     {
+                        "name": "cache",
+                        "readOnly": false,
+                        "mountPath": "/var/cache/apache2"
+                     }
+                  ]
+               }
+
+            ],
+           "imagePullSecrets": [
+               { "name" : "dstresearchkey" }
+            ]
+         }
+      }
+   }
+}
+__EOF__
+) | ${OC} create -f -
+${OC} create route passthrough httpd --service=httpd --hostname=www.dstcorp.io --port=https

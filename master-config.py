@@ -7,9 +7,12 @@ def main(argv):
 
 	file = argv[ 0 ]
 	domainName = argv[ 1 ]
+	metricsName= argv[ 2 ]
 
 	with open( file ) as f:
 		cfg = yaml.load( f )
+
+	cfg[ 'assetConfig' ][ 'metricsPublicURL' ] = 'https://' + metricsName
 
 #	cfg[ 'assetConfig' ][ 'masterPublicURL' ] = 'https://' + public_ip + ':8443/'
 #	cfg[ 'assetConfig' ][ 'publicURL' ] = 'https://' + public_ip + ':8443/console/'

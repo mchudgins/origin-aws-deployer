@@ -8,6 +8,12 @@ alias oc='sudo /opt/origin/bin/oc --config=/etc/origin/master/admin.kubeconfig'
 OC='sudo /opt/origin/bin/oc --config=/etc/origin/master/admin.kubeconfig'
 #aws s3 ls s3://dstresearch/cluster-configs/dev.dstcorp.io/ | awk '{ if ( $4 == "htpasswd" ) { print $1 " " $2 } }'
 
+certsSecrets=`${OC} get secrets | grep -i star.dstcorp.io-certs`
+if [[ -z "${certsSecrets}" ]]; then
+  echo "You must deploy the secret for the web server BEFORE running this script."
+  exit 1
+fi
+
 # TODO add these lines to crontab
 #@hourly /opt/origin/bin/oadm --config=/etc/origin/master/admin.kubeconfig prune builds --confirm --keep-complete=2 --keep-failed=2 >/dev/null
 #@hourly /opt/origin/bin/oadm --config=/etc/origin/master/admin.kubeconfig prune deployments --confirm --keep-complete=2 --keep-failed=2 >/dev/null
@@ -47,7 +53,7 @@ spec:
         - name: CLUSTER
           value: dev.dstcorp.io
         - name: OPENSHIFT_DOWNLOAD
-          value: https://s3.amazonaws.com/dstresearch/cluster-configs/v1.1.3-570/openshift-origin-server-v1.1.3-570-g8f31847-8f31847-linux-64bit.tar.gz
+          value: https://github.com/openshift/origin/releases/download/v1.2.0-rc2/openshift-origin-server-v1.2.0-rc2-642f0af-linux-64bit.tar.gz
       restartPolicy: Never
       imagePullSecrets:
       - name: dstresearchkey
