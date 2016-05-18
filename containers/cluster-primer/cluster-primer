@@ -26,6 +26,7 @@ aws s3 cp s3://dstresearch/cluster-configs/${CLUSTER}/config.tar.gz . \
 
 # TODO:  use a persistent/EBS volume for the registry (via a pv claim)
 # see  https://docs.openshift.org/latest/install_config/install/docker_registry.html
+${OC} create serviceaccount registry -n default
 ${OADM} registry --credentials=master/openshift-registry.kubeconfig --dry-run
 if [[ $? -eq 1 ]]; then
   ${OADM} registry --credentials=master/openshift-registry.kubeconfig
