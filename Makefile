@@ -53,7 +53,7 @@ launch-node3:
 	 	--template-body file:///${PWD}/oso-minion.json \
 		--parameters ParameterKey=IPAddress,ParameterValue=192.168.1.23 \
 			ParameterKey=NodeName,ParameterValue=node3 \
-			ParameterKey=InstanceType,ParameterValue=m4.xlarge
+			ParameterKey=InstanceType,ParameterValue=m4.large
 
 container:
 	sudo docker build -t registry.dstresearch.com/cluster-primer containers/cluster-primer
