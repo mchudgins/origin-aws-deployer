@@ -19,9 +19,6 @@ cat <<EOF > $conf
 DOCKER_NETWORK_OPTIONS='${DOCKER_NETWORK_OPTIONS}'
 EOF
 
-# mch Feb 2016
-cat $conf >>/etc/sysconfig/docker-network
-
 # Restart docker. "systemctl restart" will bail out (unnecessarily) in
 # the OpenShift-in-a-container case, so we work around that by sending
 # the messages by hand.
