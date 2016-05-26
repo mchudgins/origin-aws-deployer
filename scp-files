@@ -1,0 +1,8 @@
+#! /bin/bash
+
+SCP="scp -i ${HOME}/certs/apache-test.pem"
+${SCP} ${HOME}/src/origin-aws-deployer/master-script.sh fedora@dev.dstcorp.io:
+${SCP} ${HOME}/kube/httpd-secrets.yaml fedora@dev.dstcorp.io:
+${SCP} ${HOME}/src/origin-aws-deployer/containers/cluster-primer/metrics* fedora@dev.dstcorp.io:
+${SCP} ${HOME}/certs/star.dstcorp.io.pem fedora@dev.dstcorp.io:
+${SCP} ${HOME}/certs/star.dstcorp.io.key fedora@dev.dstcorp.io:
