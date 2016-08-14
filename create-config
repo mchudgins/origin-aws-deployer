@@ -9,6 +9,9 @@ MASTER_DNS=www.dstcorp.io
 ROUTING_DNS=dev.dstcorp.io
 METRICS_DNS=metrics-dev.dstcorp.io
 
+# set OPENSHIFT download target url
+. setenv.sh
+
 if [[ -z "${OPENSHIFT_DOWNLOAD}" ]]; then
   OPENSHIFT_DOWNLOAD=${DEFAULT_OPENSHIFT_DOWNLOAD}
 fi

@@ -2,7 +2,9 @@
 
 # prepare to launch an ec2 instance in AWS
 
-BASE_AMI=ami-a68b7ccb
+DEFAULT_BASE_AMI=ami-a68b7ccb
+#BASE_AMI=ami-11bd2406
+#BASE_AMI=ami-a68b7ccb
 #BASE_AMI=ami-e5de3188
 #BASE_AMI="ami-1648597c"
 #BASE_AMI="ami-1033037a"
@@ -10,6 +12,13 @@ BASE_AMI=ami-a68b7ccb
 KEY_NAME="apache-test"
 SSHOPTS="-q -o ConnectTimeout=5 -o CheckHostIP=no -o StrictHostKeychecking=no -i ${HOME}/certs/${KEY_NAME}.pem"
 UPTIME_CMD="uptime -s"
+
+# read the values for OPENSHIFT_DOWNLOAD & BASE_AMI
+. setenv.sh
+
+if [[ -z "${BASE_AMI}" ]]; then
+  BASE_AMI=${DEFAULT_BASE_AMI}
+fi
 
 WORKDIR=`mktemp -d`
 cd ${WORKDIR}
@@ -19,7 +28,8 @@ BOOT_FILE=boot.sh
 cat <<"EOF" > ${BOOT_FILE}
 #! /bin/bash
 
-DEFAULT_OPENSHIFT_DOWNLOAD=https://github.com/openshift/origin/releases/download/v1.2.0/openshift-origin-server-v1.2.0-2e62fab-linux-64bit.tar.gz
+DEFAULT_OPENSHIFT_DOWNLOAD=https://github.com/openshift/origin/releases/download/v1.2.1/openshift-origin-server-v1.2.1-5e723f6-linux-64bit.tar.gz
+#DEFAULT_OPENSHIFT_DOWNLOAD=https://github.com/openshift/origin/releases/download/v1.2.0/openshift-origin-server-v1.2.0-2e62fab-linux-64bit.tar.gz
 #DEFAULT_OPENSHIFT_DOWNLOAD=https://github.com/openshift/origin/releases/download/v1.1.6/openshift-origin-server-v1.1.6-ef1caba-linux-64bit.tar.gz
 #DEFAULT_OPENSHIFT_DOWNLOAD=https://s3.amazonaws.com/dstresearch/cluster-configs/v1.1.3-570/openshift-origin-server-v1.1.3-570-g8f31847-8f31847-linux-64bit.tar.gz
 
@@ -239,6 +249,9 @@ aws ec2 create-image --instance-id ${INSTANCE_ID} \
 
 EOF
 chmod +x ${BOOT_FILE}
+
+# update the boot file with the correct, current url for openshift
+sed -i "s|^DEFAULT_OPENSHIFT_DOWNLOAD=.*|DEFAULT_OPENSHIFT_DOWNLOAD=${OPENSHIFT_DOWNLOAD}|g" ${BOOT_FILE}
 
 # launch the instance
 echo "Launching AWS instance...."

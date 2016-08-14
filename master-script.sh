@@ -53,7 +53,7 @@ spec:
         - name: CLUSTER
           value: dev.dstcorp.io
         - name: OPENSHIFT_DOWNLOAD
-          value: https://github.com/openshift/origin/releases/download/v1.2.0/openshift-origin-server-v1.2.0-2e62fab-linux-64bit.tar.gz
+          value: https://github.com/openshift/origin/releases/download/v1.2.1/openshift-origin-server-v1.2.1-5e723f6-linux-64bit.tar.gz
       restartPolicy: Never
       imagePullSecrets:
       - name: dstresearchkey
