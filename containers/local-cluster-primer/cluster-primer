@@ -1,5 +1,6 @@
 #! /bin/bash
-KUBECONFIG=/var/lib/origin/openshift.local.config/master/admin.kubeconfig
+CRED_PATH=/var/lib/origin/openshift.local.config
+KUBECONFIG=${CRED_PATH}/master/admin.kubeconfig
 OADM="/usr/bin/oadm --config=$KUBECONFIG"
 OC="/usr/bin/oc --config=$KUBECONFIG"
 CENTOS_IS="https://raw.githubusercontent.com/openshift/origin/master/examples/image-streams/image-streams-centos7.json"
@@ -12,9 +13,9 @@ cd ${TMPDIR}
 # TODO:  use a persistent/EBS volume for the registry (via a pv claim)
 # see  https://docs.openshift.org/latest/install_config/install/docker_registry.html
 ${OC} create serviceaccount registry -n default
-${OADM} registry --credentials=master/openshift-registry.kubeconfig --dry-run
+${OADM} registry --credentials=${CRED_PATH}/master/openshift-registry.kubeconfig --dry-run
 if [[ $? -eq 1 ]]; then
-  ${OADM} registry --credentials=master/openshift-registry.kubeconfig
+  ${OADM} registry --credentials=${CRED_PATH}/master/openshift-registry.kubeconfig
 fi
 
 # create a router
