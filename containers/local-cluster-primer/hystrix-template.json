@@ -1,0 +1,205 @@
+{
+   "kind": "List",
+   "apiVersion": "v1",
+   "metadata": {
+      "name": "hystrix"
+   },
+     "items": [
+      {
+         "kind": "Template",
+         "apiVersion": "v1",
+         "metadata": {
+            "name": "hystrix",
+            "annotations": {
+               "description": "Hystrix Dashboard",
+               "iconClass": "icon-jboss",
+               "tags": "instant-app,springboot,maven,java"
+            }
+
+         },
+         "labels": {
+            "application": "springboot-hystrix",
+            "createdBy": "template-hystrix"
+         },
+         "parameters": [
+            {
+               "description": "The name for the application.",
+               "name": "APPLICATION_NAME",
+               "value": "hystrix",
+               "displayName": "Application name",
+               "required": true
+            },
+            {
+               "description": "Custom hostname for service routes.  Leave blank for default hostname, e.g.: <application-name>.<project>.<default-domain-suffix>",
+               "name": "APPLICATION_HOSTNAME",
+               "displayName": "Application hostname"
+            }
+         ],
+         "objects": [
+            {
+               "kind": "DeploymentConfig",
+               "apiVersion": "v1",
+               "metadata": {
+                  "name": "${APPLICATION_NAME}-dashboard"
+               },
+               "spec": {
+                  "strategy": {
+                     "type": "Rolling",
+                     "rollingParams": {
+                        "updatePeriodSeconds": 1,
+                        "intervalSeconds": 1,
+                        "timeoutSeconds": 600
+                     },
+                     "resources": {}
+                  },
+                  "triggers": [
+                     {
+                        "type": "ConfigChange"
+                     }
+                  ],
+                  "replicas": 1,
+                  "selector": {
+                     "deploymentconfig": "${APPLICATION_NAME}-dashboard"
+                  },
+                  "template": {
+                     "metadata": {
+                        "labels": {
+                           "deploymentconfig": "${APPLICATION_NAME}-dashboard"
+                        }
+                     },
+                     "spec": {
+                        "containers": [
+                           {
+                              "name": "${APPLICATION_NAME}-dashboard",
+                              "image": "172.30.250.243:5000/golden/hystrix-dashboard",
+                              "ports": [
+                                 {
+                                    "containerPort": 8080,
+                                    "protocol": "TCP"
+                                 }
+                              ],
+                              "livenessProbe": {
+                                 "tcpSocket": {
+                                    "port": 8080
+                                 },
+                                 "initialDelaySeconds": 30,
+                                 "timeoutSeconds": 1
+                              },
+                              "resources": {},
+                              "terminationMessagePath": "/dev/termination-log",
+                              "imagePullPolicy": "IfNotPresent",
+                              "securityContext": {
+                                 "capabilities": {},
+                                 "privileged": false
+                              }
+                           }
+                        ],
+                        "restartPolicy": "Always",
+                        "dnsPolicy": "ClusterFirst"
+                     }
+                  }
+               }
+            },
+            {
+               "kind": "Route",
+               "apiVersion": "v1",
+               "metadata": {
+                  "name": "${APPLICATION_NAME}"
+               },
+               "spec": {
+                  "host": "${APPLICATION_HOSTNAME}",
+                  "to": {
+                     "kind": "Service",
+                     "name": "${APPLICATION_NAME}-dashboard"
+                  }
+               }
+            },
+            {
+               "kind": "Service",
+               "apiVersion": "v1",
+               "metadata": {
+                  "name": "${APPLICATION_NAME}-dashboard"
+               },
+               "spec": {
+                  "ports": [
+                     {
+                        "name": "http",
+                        "port": 80,
+                        "targetPort": 8080
+                     }
+                  ],
+                  "selector": {
+                     "deploymentconfig": "${APPLICATION_NAME}-dashboard"
+                  },
+                  "type": "ClusterIP",
+                  "sessionAffinity": "None"
+               }
+            },
+            {
+               "kind":"ReplicationController",
+               "apiVersion":"v1",
+               "metadata":{
+                  "name":"turbine",
+                  "labels":{
+                     "name":"turbine"
+                  }
+               },
+               "spec":{
+                  "replicas":1,
+                  "selector":{
+                     "name":"turbine",
+                     "app":"turbine"
+                  },
+                  "template":{
+                     "metadata":{
+                        "labels":{
+                           "name":"turbine",
+                           "app":"turbine"
+                        }
+                     },
+                     "spec":{
+                        "containers":[
+                           {
+                              "name":"turbine",
+                              "image":"registry.dstresearch.com/library/turbine:latest",
+                              "ports":[
+                                 {
+                                    "containerPort":8080,
+                                    "protocol":"TCP"
+                                 }
+                              ]
+                           }
+                        ],
+                       "imagePullSecrets": [
+                           { "name" : "dstresearchkey" }
+                        ]
+                     }
+                  }
+               }
+            },
+            {
+               "kind": "Service",
+               "apiVersion": "v1",
+               "metadata": {
+                  "name": "${APPLICATION_NAME}-turbine"
+               },
+               "spec": {
+                  "ports": [
+                     {
+                        "name": "http",
+                        "port": 80,
+                        "targetPort": 8080
+                     }
+                  ],
+                  "selector": {
+                     "name": "turbine"
+                  },
+                  "type": "ClusterIP",
+                  "sessionAffinity": "None"
+               }
+            }
+
+         ]
+      }
+   ]
+}

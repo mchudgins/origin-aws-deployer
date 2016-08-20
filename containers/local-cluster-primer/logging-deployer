@@ -1,0 +1,23 @@
+#! /bin/bash
+
+OC='sudo /opt/origin/bin/oc --config=/etc/origin/master/admin.kubeconfig'
+OADM='sudo /opt/origin/bin/oadm --config=/etc/origin/master/admin.kubeconfig'
+ELK=elk
+
+${OC} new-project ${ELK}
+${OC} project ${ELK}
+${OC} policy add-role-to-user admin mchudgins@dstsystems.com -n elk
+${OC} create -n openshift -f https://raw.githubusercontent.com/openshift/origin-aggregated-logging/master/deployer/deployer.yaml
+
+${OC} secrets new logging-deployer kibana.crt=star.dstcorp.io.pem kibana.key=star.dstcorp.io.key kibana-ops.crt=star.dstcorp.io.pem kibana-ops.key=star.dstcorp.io.key
+${OC} new-app logging-deployer-account-template
+
+${OC} policy add-role-to-user edit --serviceaccount logging-deployer
+${OC} policy add-role-to-user daemonset-admin --serviceaccount logging-deployer
+${OADM} policy add-cluster-role-to-user oauth-editor system:serviceaccount:${ELK}:logging-deployer
+${OADM} policy add-scc-to-user privileged system:serviceaccount:${ELK}:aggregated-logging-fluentd
+${OADM} policy add-cluster-role-to-user cluster-reader system:serviceaccount:${ELK}:aggregated-logging-fluentd
+${OC} new-app logging-deployer-template \
+             --param KIBANA_HOSTNAME=kibana-dev.dstcorp.io \
+             --param ES_CLUSTER_SIZE=1 \
+             --param PUBLIC_MASTER_URL=https://www.dstcorp.io

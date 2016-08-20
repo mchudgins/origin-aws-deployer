@@ -1,0 +1,40 @@
+#! /bin/bash
+
+OC='sudo /opt/origin/bin/oc --config=/etc/origin/master/admin.kubeconfig'
+OADM='sudo /opt/origin/bin/oadm --config=/etc/origin/master/admin.kubeconfig'
+
+${OC} project openshift-infra
+
+${OC} create -f - <<API
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: metrics-deployer
+secrets:
+- name: metrics-deployer
+API
+
+${OADM} policy add-role-to-user edit system:serviceaccount:openshift-infra:metrics-deployer
+${OADM} policy add-cluster-role-to-user cluster-reader system:serviceaccount:openshift-infra:heapster
+${OC} secrets new metrics-deployer nothing=/dev/null
+${OC} new-app -f metrics-deployer.yaml -p HAWKULAR_METRICS_HOSTNAME=metrics-dev.dstcorp.io -p USE_PERSISTENT_STORAGE=false
+
+${OC} create -f - <<API
+apiVersion: v1
+kind: Route
+metadata:
+  name: metrics-dev
+  namespace: default
+  labels:
+    name: metrics-dev
+    owner: mch
+spec:
+  host: metrics-dev.dstcorp.io
+  to:
+    kind: Service
+    name: httpd
+  port:
+    targetPort: https
+  tls:
+    termination: passthrough
+API

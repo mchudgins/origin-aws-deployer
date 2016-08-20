@@ -1,0 +1,163 @@
+#! /bin/bash
+KUBECONFIG=/var/lib/origin/openshift.local.config/master/admin.kubeconfig
+OADM="/usr/bin/oadm --config=$KUBECONFIG"
+OC="/usr/bin/oc --config=$KUBECONFIG"
+CENTOS_IS="https://raw.githubusercontent.com/openshift/origin/master/examples/image-streams/image-streams-centos7.json"
+
+TMPDIR=`mktemp -d`
+cd ${TMPDIR}
+
+# create a registry
+
+# TODO:  use a persistent/EBS volume for the registry (via a pv claim)
+# see  https://docs.openshift.org/latest/install_config/install/docker_registry.html
+${OC} create serviceaccount registry -n default
+${OADM} registry --credentials=master/openshift-registry.kubeconfig --dry-run
+if [[ $? -eq 1 ]]; then
+  ${OADM} registry --credentials=master/openshift-registry.kubeconfig
+fi
+
+# create a router
+
+# TODO: make this an HA router
+${OADM} router --dry-run
+if [[ $? -eq 1 ]]; then
+  echo \
+      '{"kind":"ServiceAccount","apiVersion":"v1","metadata":{"name":"router"}}' \
+      | ${OC} create -f -
+  ${OADM} policy add-scc-to-user privileged router
+  ${OADM} policy add-scc-to-user hostnetwork -z router
+  ${OADM} router router --replicas=1 \
+      --credentials=${ROUTER_KUBECONFIG:-"$KUBECONFIG"} \
+      --service-account=router
+fi
+
+# TODO: associate the router's node's public IP address with
+# *.${CLUSTER} in the route53 DNS
+
+# finally, sleep some amount of time waiting for the registry to come up
+# then create the default image streams
+
+curl -L ${CENTOS_IS} -o image-streams-centos7.json
+
+# wait for a pod named 'docker-registry-1*' to have state of 'Running'
+# (can't be the 'docker-registry-1-deploy' pod)
+registryStatus=`${OC} get pods | grep 'docker-registry-1' \
+	| grep -v 'docker-registry-1-deploy' | awk '{ print $3 }'`
+while [[ ${registryStatus,,} != "running" ]]; do
+  sleep 10
+	registryStatus=`${OC} get pods | grep 'docker-registry-1' \
+		| grep -v 'docker-registry-1-deploy' | awk '{ print $3 }'`
+done
+
+# TODO: edit the docker-registry service so that it has the same
+# cluster/service IP address each time
+
+# now create various image streams
+${OC} create -f image-streams-centos7.json --namespace=openshift
+
+(
+cat <<"EOF"
+kind: "ImageStream"
+apiVersion: "v1"
+metadata:
+  name: "debian"
+spec:
+  dockerImageRepository: "library/debian"
+EOF
+) | ${OC} create -f - --namespace=openshift
+
+(
+cat <<"EOF"
+kind: "ImageStream"
+apiVersion: "v1"
+metadata:
+  name: "centos"
+spec:
+  dockerImageRepository: "library/centos"
+EOF
+) | ${OC} create -f - --namespace=openshift
+
+(
+cat <<"EOF"
+kind: "ImageStream"
+apiVersion: "v1"
+metadata:
+  name: "java"
+spec:
+  dockerImageRepository: "library/java"
+EOF
+) | ${OC} create -f - --namespace=openshift
+
+#
+# create a project for the 'golden' builds.
+# permit anyone to pull images from it.
+#
+# see https://docs.openshift.com/enterprise/3.1/dev_guide/image_pull_secrets.html#allowing-pods-to-reference-images-across-projects
+#
+${OC} new-project golden \
+  --description='Golden DST Builds' \
+  --display-name='DST Builds'
+${OC} project default
+${OC} policy add-role-to-group system:image-puller system:serviceaccounts \
+  --namespace=golden
+
+# need some images from registry.dstresearch.com, set up the docker pull secret
+(
+cat <<__EOF__
+apiVersion: v1
+kind: Secret
+metadata:
+  name: dstresearchkey
+data:
+  .dockercfg: ewoJInJlZ2lzdHJ5LmRzdHJlc2VhcmNoLmNvbSI6IHsKCQkiYXV0aCI6ICJaRzlqYTJWeU9sSmxjMlZoY21Ob1h6RT0iLAoJCSJlbWFpbCI6ICJhZ2VudEBkc3RyZXNlYXJjaC5jb20iCgl9Cn0K
+type: kubernetes.io/dockercfg
+__EOF__
+) | ${OC} create -f -
+
+${OC} policy add-role-to-group view system:serviceaccounts \
+    --namespace=golden
+${OC} policy add-role-to-user admin mchudgins@dstsystems.com -n golden
+${OC} policy add-role-to-user admin mchudgins@dstsystems.com -n openshift
+${OC} policy add-role-to-user admin mchudgins@dstsystems.com -n openshift-infra
+${OC} policy add-role-to-user admin mchudgins@dstsystems.com -n default
+
+# TODO: add templates to openshift namespace
+
+# Launch the www server
+# note that the secret must have been previously deployed.
+(
+cat <<__EOF__
+{
+   "kind":"Service",
+   "apiVersion":"v1",
+   "metadata":{
+      "name":"httpd",
+      "labels":{
+         "name":"httpd",
+         "owner":"mch"
+      }
+   },
+   "spec":{
+      "type": "LoadBalancer",
+      "ports": [
+        {
+          "name":"http",
+          "port":80,
+          "targetPort":8080,
+          "protocol":"TCP"
+        },
+        {
+          "name":"https",
+          "port":443,
+          "targetPort":8443,
+          "protocol":"TCP"
+        }
+      ],
+      "selector":{
+         "name":"httpd"
+      }
+   }
+}
+__EOF__
+) | ${OC} create -f -
